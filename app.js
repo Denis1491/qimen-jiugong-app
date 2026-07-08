@@ -109,6 +109,8 @@ let reportMode = "simple";
 let currentView = "ask";
 let inquiryLocked = false;
 let activeCaseId = null;
+let activeCompareSide = "A";
+let compareSelections = {A:null,B:null};
 
 // ===== 工具函數 =====
 function pad(n){return String(n).padStart(2,"0")}
@@ -119,17 +121,40 @@ function parseDT(){const v=document.getElementById("dt").value;if(!v)return null
 function questionText(){return (document.getElementById("questionText")?.value||"").trim()}
 function inquiryMode(){return document.getElementById("inquiryMode")?.value||"formal"}
 function isFormalInquiry(){return inquiryMode()==="formal"}
+function selectionMode(){return document.getElementById("selectionMode")?.value||"single"}
+function isCompareMode(){return selectionMode()==="compare"}
+function isCompareChart(){return chart?.settings?.selectionMode==="compare"}
+function compareOptionName(side){return (document.getElementById(`option${side}Name`)?.value||`選項 ${side}`).trim()||`選項 ${side}`}
+function compareNumber(side){return Number(compareSelections[side]||0)||null}
+function setSelectionMode(mode){const el=document.getElementById("selectionMode"); if(el)el.value=mode||"single"}
 function updateInquiryHint(){
   const hint=document.getElementById("inquiryHint"); if(!hint)return;
+  if(isCompareMode()){
+    hint.textContent=isFormalInquiry()
+      ? "複選比較：先寫同一個問題與 A/B 選項，再分別替 A、B 憑直覺選數。排盤後會比較兩個選項。"
+      : "複選比較學習模式：可替 A、B 各選一數，排盤後比較兩個宮位的得失。";
+    return;
+  }
   hint.textContent=isFormalInquiry()
     ? "正式問事：請先默念問題，憑直覺選 1-9。鎖定後再揭盤，避免被盤面吉凶影響選擇。"
     : "學習模式：可以先排盤、看盤面，再點選不同宮位做研究與比較。";
 }
 function updateInquiryControls(){
   const locked=!!inquiryLocked;
-  ["questionText","qtype","inquiryMode"].forEach(id=>{const el=document.getElementById(id); if(el)el.disabled=locked;});
+  ["questionText","qtype","inquiryMode","selectionMode","optionAName","optionBName"].forEach(id=>{const el=document.getElementById(id); if(el)el.disabled=locked;});
   const resetAsk=document.getElementById("resetInquiryAsk"); if(resetAsk)resetAsk.disabled=false;
   const resetChart=document.getElementById("resetInquiryChart"); if(resetChart)resetChart.disabled=false;
+  updateCompareUI();
+}
+function updateCompareUI(){
+  const panel=document.getElementById("comparePanel"); if(panel)panel.hidden=!isCompareMode();
+  const a=document.getElementById("compareANum"), b=document.getElementById("compareBNum");
+  if(a)a.textContent=compareSelections.A||"未選";
+  if(b)b.textContent=compareSelections.B||"未選";
+  document.querySelectorAll(".compare-side").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.side===activeCompareSide);
+    btn.disabled=!!inquiryLocked;
+  });
 }
 function fmtDT(p){return `${p.y}-${pad(p.m)}-${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}`}
 function jdn(y,m,d){let a=Math.floor((14-m)/12);let y2=y+4800-a;let m2=m+12*a-3;return d+Math.floor((153*m2+2)/5)+365*y2+Math.floor(y2/4)-Math.floor(y2/100)+Math.floor(y2/400)-32045}
@@ -184,7 +209,12 @@ function buildChart(){
   try{
     const p=parseDT(); if(!p){alert("請輸入起盤時間");return}
     if(isFormalInquiry()&&!questionText()){alert("正式問事請先輸入問題。");return false}
-    if(!selectedNum){alert("請先選 1-9 一個數字");return false}
+    const compareMode=isCompareMode();
+    if(compareMode){
+      if(!compareSelections.A||!compareSelections.B){alert("複選比較請先替 A、B 各選一個數字。");return false}
+      if(compareSelections.A===compareSelections.B){alert("A、B 請選不同數字，才有比較意義。");return false}
+      selectedNum=compareSelections.A;
+    }else if(!selectedNum){alert("請先選 1-9 一個數字");return false}
     const ziChange=document.getElementById("ziChange").value==="true";
     const yGZ=yearGZ(p); const yStem=stemOf(yGZ), yBranch=branchOf(yGZ);
     const mInfo=monthInfo(p,yStem); const dIdx=dayIndex(p,ziChange); const dGZ=gzFromIndex(dIdx); const hGZ=hourGZ(p,stemOf(dGZ));
@@ -207,7 +237,7 @@ function buildChart(){
       return {key,number:PALACE_NUM[key],god:godMap[key]||"",star:starMap[key]||"",door,top,bottom,flags:unique(flags)};
     });
     chart={
-      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, question:questionText(), settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange,inquiryMode:inquiryMode(),lockedFormal:isFormalInquiry()},
+      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, question:questionText(), settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange,inquiryMode:inquiryMode(),selectionMode:compareMode?"compare":"single",compareOptions:compareMode?{A:{name:compareOptionName("A"),num:compareSelections.A},B:{name:compareOptionName("B"),num:compareSelections.B}}:null,lockedFormal:isFormalInquiry()},
       meta:{solar:fmtDT(p),lunar:lunarText(lunar),yearGZ:yGZ,yearStem:yStem,yearBranch:yBranch,monthStem:mInfo.stem,monthBranch:mInfo.branch,dayStem:stemOf(dGZ),dayBranch:branchOf(dGZ),hourStem:stemOf(hGZ),hourBranch:branchOf(hGZ),monthGZ:mInfo.stem+mInfo.branch,dayGZ:dGZ,hourGZ:hGZ,ju:`陰${CN_NUM[ju.num]}局`,juNum:ju.num,juFormula:ju.formula,xunshou:`${xun.start}旬`,futou:xun.hidden,kongwang:xun.kong,yima,zhifu,zhishi,xunPalace,timePalace,starOffset,doorOffset:dOff},
       palaces
     };
@@ -275,16 +305,72 @@ function showView(view){
   if(currentView==="chart" && !chart)toast("尚未排盤，請先完成問事。");
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function renderNums(){const pad=document.getElementById("numPad"); if(!pad.dataset.ready){pad.innerHTML=""; [1,2,3,4,5,6,7,8,9].forEach(n=>{const b=document.createElement("button"); b.className="num-btn"; b.textContent=String(n); b.onclick=()=>{if(inquiryLocked){toast("正式問事已鎖定，請按「重新問事」再重選。");return} selectedNum=n; renderAll()}; pad.appendChild(b)}); pad.dataset.ready="1"} Array.from(pad.children).forEach((b,i)=>{const n=i+1; b.classList.toggle("active",selectedNum===n); b.disabled=inquiryLocked&&selectedNum!==n; b.title=inquiryLocked?"正式問事已鎖定":""})}
+function chooseNumber(n){
+  if(inquiryLocked){toast("正式問事已鎖定，請按「重新問事」再重選。");return}
+  if(isCompareMode()){
+    compareSelections[activeCompareSide]=n;
+    selectedNum=n;
+    if(activeCompareSide==="A"&&!compareSelections.B)activeCompareSide="B";
+    renderAll();
+    return;
+  }
+  selectedNum=n; renderAll();
+}
+function renderNums(){
+  const pad=document.getElementById("numPad");
+  if(!pad.dataset.ready){
+    pad.innerHTML="";
+    [1,2,3,4,5,6,7,8,9].forEach(n=>{
+      const b=document.createElement("button");
+      b.className="num-btn";
+      b.onclick=()=>chooseNumber(n);
+      pad.appendChild(b);
+    });
+    pad.dataset.ready="1";
+  }
+  Array.from(pad.children).forEach((b,i)=>{
+    const n=i+1; const marks=[];
+    if(isCompareMode()){
+      if(compareSelections.A===n)marks.push("A");
+      if(compareSelections.B===n)marks.push("B");
+      b.innerHTML=`<span>${n}</span>${marks.length?`<em>${marks.join("/")}</em>`:""}`;
+      b.classList.toggle("active",marks.length>0);
+      b.classList.toggle("compare-a",compareSelections.A===n);
+      b.classList.toggle("compare-b",compareSelections.B===n);
+      b.disabled=!!inquiryLocked;
+      b.title=inquiryLocked?"正式問事已鎖定":`替 ${activeCompareSide} 選 ${n}`;
+    }else{
+      b.textContent=String(n);
+      b.classList.toggle("active",selectedNum===n);
+      b.classList.remove("compare-a","compare-b");
+      b.disabled=inquiryLocked&&selectedNum!==n;
+      b.title=inquiryLocked?"正式問事已鎖定":"";
+    }
+  });
+}
 function renderMeta(){const box=document.getElementById("metaGrid"); if(!chart){box.innerHTML="";return} const m=chart.meta; const pairs=[["西元",m.solar],["農曆",m.lunar],["四柱",`${m.yearGZ}　${m.monthGZ}　${m.dayGZ}　${m.hourGZ}`],["起局",`${m.ju}｜陰盤`],["旬首",m.xunshou],["符頭",m.futou],["空亡",m.kongwang],["驛馬",m.yima],["值符",m.zhifu],["值使",m.zhishi],["局數公式",m.juFormula],["門法",document.getElementById("doorMode").selectedOptions[0].textContent]]; box.innerHTML=pairs.map(([a,b])=>`<div class="meta"><span>${a}</span><strong>${escapeHTML(b)}</strong></div>`).join(""); document.getElementById("chartBadge").textContent=`${m.ju}・${m.zhifu}・${m.zhishi}`; const ov=overallScore(); document.getElementById("metricOverall").textContent=`${ov}/100`;}
 function stemSpan(st,pal){const tags=[tagFor("stem",st)]; if(STEM_TOMB[st]===pal)tags.push(`<span class="small-tag tag-risk">墓</span>`); if(STEM_PUNISH[st]===pal)tags.push(`<span class="small-tag tag-risk">刑</span>`); const cls=classByScore("stem",st); return `<span class="${cls}">${st}</span>${tags.join("")}`}
 function stemGroup(stems,pal){return stems.length?stems.map(st=>stemSpan(st,pal)).join(""):`<span class="muted-text">無</span>`}
 function flagGroup(flags){return flags.length?flags.map(f=>`<span class="flag ${flagClass(f)}">${f}</span>`).join(""):`<span class="muted-text">無</span>`}
-function selectPalaceNumber(n){if(inquiryLocked){toast("正式問事已鎖定，請按「重新問事」再重選。");return} selectedNum=Number(n); renderAll();}
+function selectPalaceNumber(n){
+  if(inquiryLocked){toast("正式問事已鎖定，請按「重新問事」再重選。");return}
+  if(isCompareMode()){
+    const raw=Number(n);
+    compareSelections[activeCompareSide]=raw;
+    selectedNum=raw;
+    if(activeCompareSide==="A"&&!compareSelections.B)activeCompareSide="B";
+    renderAll();
+    return;
+  }
+  selectedNum=Number(n); renderAll();
+}
 function renderGrid(){const grid=document.getElementById("palaceGrid"); if(!chart){grid.innerHTML="<div class='palace center' style='grid-column:1/4'>請先輸入時間並開始排盤</div>"; return} const q=chart.settings.qtype; grid.innerHTML=chart.palaces.map(p=>{
-  const sel=lockedPalaceNumber(selectedNum)===p.number; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮</strong><br><span class="score-pill score-mid">5</span></div></div>`}
+  const cmp=isCompareChart()?chart.settings.compareOptions:null;
+  const aHit=cmp&&lockedPalaceNumber(cmp.A.num)===p.number, bHit=cmp&&lockedPalaceNumber(cmp.B.num)===p.number;
+  const sel=lockedPalaceNumber(selectedNum)===p.number||aHit||bHit; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮</strong><br><span class="score-pill score-mid">5</span></div></div>`}
   const s=scorePalaceRaw(p,q); const sc=s.score; const bg=s.denied||sc<60?"bad-bg":"good-bg"; const scoreText=s.denied?"否":sc;
   return `<button type="button" class="palace ${bg} ${sel?"selected":""}" data-num="${p.number}" onclick="selectPalaceNumber(${p.number})" aria-label="鎖定${p.key}${p.number}宮">
+    ${aHit||bHit?`<span class="compare-palace-tag">${aHit?"A":""}${aHit&&bHit?"/":""}${bHit?"B":""}</span>`:""}
     <div class="palace-top"><span class="palace-id">${p.key}<small>${p.number}</small></span><span class="god ${classByScore("god",p.god)}">${symbolText("god",p.god)}</span></div>
     <div class="palace-mid"><span class="sym ${classByScore("star",p.star)}">${symbolText("star",p.star)}</span><span class="stems">${stemGroup(p.top,p.key)}</span></div>
     <div class="palace-bottom"><span class="sym ${classByScore("door",p.door)}">${symbolText("door",p.door)}</span><span class="stems muted-text">${stemGroup(p.bottom,p.key)}</span></div>
@@ -295,6 +381,11 @@ function getPalaceByNum(n){return chart?.palaces.find(p=>p.number===lockedPalace
 function renderLockedPanel(){
   const box=document.getElementById("lockedPalacePanel"); if(!box)return;
   if(!chart){box.innerHTML=`<div class="locked-empty">請先起盤，再選一個數字。</div>`; return}
+  if(isCompareChart()){
+    const ctx=buildCompareContext();
+    box.innerHTML=comparePanelHTML(ctx);
+    return;
+  }
   if(!selectedNum){box.innerHTML=`<div class="locked-empty">請選 1-9。</div>`; return}
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s);
   const statusClass=s.denied?"lock-denied":s.score>=60?"lock-good":"lock-bad";
@@ -387,6 +478,15 @@ function restoreChartPayload(payload){
     if(chart.settings.doorMode)document.getElementById("doorMode").value=chart.settings.doorMode;
     if(typeof chart.settings.ziChange==="boolean")document.getElementById("ziChange").value=String(chart.settings.ziChange);
     if(chart.settings.inquiryMode)document.getElementById("inquiryMode").value=chart.settings.inquiryMode;
+    if(chart.settings.selectionMode)setSelectionMode(chart.settings.selectionMode);
+    if(chart.settings.compareOptions){
+      compareSelections={A:Number(chart.settings.compareOptions.A?.num||0)||null,B:Number(chart.settings.compareOptions.B?.num||0)||null};
+      const a=document.getElementById("optionAName"), b=document.getElementById("optionBName");
+      if(a)a.value=chart.settings.compareOptions.A?.name||"";
+      if(b)b.value=chart.settings.compareOptions.B?.name||"";
+    }else{
+      compareSelections={A:null,B:null};
+    }
     inquiryLocked=!!chart.settings.lockedFormal;
   }
   if(chart.meta&&chart.meta.solar){
@@ -396,7 +496,8 @@ function restoreChartPayload(payload){
   renderAll(); showView("chart"); toast("已匯入盤面。");
 }
 function resetInquiry(){
-  chart=null; selectedNum=null; inquiryLocked=false; activeCaseId=null;
+  chart=null; selectedNum=null; inquiryLocked=false; activeCaseId=null; activeCompareSide="A"; compareSelections={A:null,B:null}; setSelectionMode("single");
+  const a=document.getElementById("optionAName"), b=document.getElementById("optionBName"); if(a)a.value=""; if(b)b.value="";
   document.getElementById("caseTitle").value="";
   document.getElementById("caseOutcome").value="";
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value="";
@@ -466,7 +567,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=ink-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=compare-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -762,10 +863,81 @@ function generateSoulReport(sourceChart, selectedPalace, qtype){
 }
 function makeSoulReport(p,s){return generateSoulReport(chart,p,chart?.settings?.qtype||"今日運勢")}
 window.generateSoulReport = generateSoulReport;
+function makeSoulReportForNumber(num,p){
+  const old=selectedNum;
+  selectedNum=num;
+  const report=generateSoulReport(chart,p,chart?.settings?.qtype||"今日運勢");
+  selectedNum=old;
+  return report;
+}
+function compareOptions(){
+  const opts=chart?.settings?.compareOptions||{};
+  return {
+    A:{name:opts.A?.name||compareOptionName("A"),num:Number(opts.A?.num||compareSelections.A||0)||null},
+    B:{name:opts.B?.name||compareOptionName("B"),num:Number(opts.B?.num||compareSelections.B||0)||null}
+  };
+}
+function compareChoice(side,opt){
+  const p=getPalaceByNum(opt.num);
+  const s=scorePalace(p,chart.settings.qtype);
+  const report=makeSoulReportForNumber(opt.num,p);
+  return {side,name:opt.name,num:opt.num,palace:p,score:s.score,denied:!!s.denied,grade:s.denied?"強烈不建議":s.grade.name,report};
+}
+function compareRankValue(choice){return choice.denied?-20:choice.score}
+function buildCompareContext(){
+  const opts=compareOptions();
+  const A=compareChoice("A",opts.A), B=compareChoice("B",opts.B);
+  const aVal=compareRankValue(A), bVal=compareRankValue(B), diff=aVal-bVal;
+  let winner=null, weaker=null, verdict="";
+  if(A.denied&&B.denied){winner=aVal>=bVal?A:B; weaker=winner===A?B:A; verdict="兩個選項都不適合重押，只能選風險較小的一方，小步試探。";}
+  else if(Math.abs(diff)<10){winner=aVal>=bVal?A:B; weaker=winner===A?B:A; verdict="兩個選項差距不大，重點不在誰一定贏，而是哪一個條件更清楚、風險更容易降級。";}
+  else {winner=diff>0?A:B; weaker=winner===A?B:A; verdict=`${winner.name}目前較可用，因為分數、阻力與可操作性整體優於${weaker.name}。`;}
+  return {A,B,winner,weaker,diff:Math.abs(diff),verdict,qtype:chart.settings.qtype,question:chart.question||questionText()};
+}
+function compareCardHTML(choice,winnerSide){
+  return `<div class="compare-card ${choice.side===winnerSide?"winner":""}">
+    <div class="compare-card-head"><strong>${escapeHTML(choice.side)}｜${escapeHTML(choice.name)}</strong><span>${choice.denied?"×":choice.score+"/100"}｜${escapeHTML(choice.grade)}</span></div>
+    <div>${escapeHTML(choice.num)} 號鎖 ${escapeHTML(choice.palace.key)}${choice.palace.number}宮｜${escapeHTML(PALACE_DIR[choice.palace.key])}</div>
+    <div class="compare-card-copy">${escapeHTML(compactText(choice.report.headline,180))}</div>
+  </div>`;
+}
+function comparePanelHTML(ctx){
+  return `<div class="compare-result">
+    <div class="compare-verdict"><strong>比較結論</strong>${escapeHTML(ctx.verdict)}</div>
+    <div class="compare-cards">${compareCardHTML(ctx.A,ctx.winner.side)}${compareCardHTML(ctx.B,ctx.winner.side)}</div>
+    <div class="locked-summary"><strong>推薦取用</strong>${escapeHTML(ctx.winner.name)}較可用；若選${escapeHTML(ctx.weaker.name)}，請先照它的避險方法降級，不要一次重押。</div>
+  </div>`;
+}
+function compareSummaryText(ctx){
+  return `${ctx.verdict}\n\n推薦：${ctx.winner.side}｜${ctx.winner.name}（${ctx.winner.score}/100｜${ctx.winner.grade}）\n備選：${ctx.weaker.side}｜${ctx.weaker.name}（${ctx.weaker.score}/100｜${ctx.weaker.grade}）`;
+}
+function compareActionText(choice){
+  return compactText(choice.report.actionPlan,260)||"先小步確認條件，不一次重押。";
+}
+function compareRiskText(choice){
+  return compactText(choice.report.avoidPlan,260)||"先查證條件，保留退路。";
+}
 function makeSummary(p,s){const r=makeSoulReport(p,s); return {short:r.level,total:r.headline,action:String(r.actionPlan).replace(/\n/g," "),avoid:String(r.avoidPlan).replace(/\n/g," "),fengshui:r.fengShui.replace(/\n/g," ")}}
 function renderResult(){
   const metricLock=document.getElementById("metricLock"), metricScore=document.getElementById("metricScore");
   if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; metricLock.textContent="未選數"; metricScore.textContent="—"; return}
+  if(isCompareChart()){
+    const ctx=buildCompareContext();
+    metricLock.textContent=`A:${ctx.A.num}｜B:${ctx.B.num}`;
+    metricScore.textContent=`推薦 ${ctx.winner.side}`;
+    document.getElementById("resultSub").textContent=`${ctx.A.name} vs ${ctx.B.name}`;
+    document.getElementById("scoreNum").textContent=ctx.winner.denied?"×":ctx.winner.score;
+    document.getElementById("gradeText").innerHTML=`<span class="score-pill ${ctx.winner.denied?"score-bad":"score-good"}">推薦 ${escapeHTML(ctx.winner.side)}</span>`;
+    document.getElementById("scoreBar").style.width=(ctx.winner.denied?100:ctx.winner.score)+"%";
+    document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">A ${escapeHTML(ctx.A.name)}</span>`,`<span class="tab">B ${escapeHTML(ctx.B.name)}</span>`,`<span class="tab">${escapeHTML(ctx.qtype)}</span>`].join("");
+    document.getElementById("resultHeadline").textContent=ctx.verdict;
+    document.getElementById("resultList").innerHTML=`${comparePanelHTML(ctx)}
+      <div class="item action"><strong>${escapeHTML(ctx.A.name)}怎麼用</strong>${escapeHTML(compareActionText(ctx.A))}</div>
+      <div class="item action"><strong>${escapeHTML(ctx.A.name)}先避開</strong>${escapeHTML(compareRiskText(ctx.A))}</div>
+      <div class="item action"><strong>${escapeHTML(ctx.B.name)}怎麼用</strong>${escapeHTML(compareActionText(ctx.B))}</div>
+      <div class="item action"><strong>${escapeHTML(ctx.B.name)}先避開</strong>${escapeHTML(compareRiskText(ctx.B))}</div>`;
+    return;
+  }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   metricLock.textContent=`${selectedNum}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"強烈不建議":s.score+"/100 "+s.grade.name}`;
   document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${escapeHTML(report.level)}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
@@ -886,17 +1058,76 @@ function formatTeacherReport(report,question,m,p){
     `提醒\n本工具為奇門遁甲學習、決策輔助與風險降級用途，不取代醫療、法律、投資或專業意見。重大決策請結合現實資料判斷；風水只處理地利的一部分，不能代替人的努力與選擇。`
   ].filter(Boolean).join("\n\n");
 }
+function compareEvidenceText(ctx){
+  return [
+    `${ctx.A.side}｜${ctx.A.name}\n${shortEvidenceBlock(ctx.A.report,4)}`,
+    `${ctx.B.side}｜${ctx.B.name}\n${shortEvidenceBlock(ctx.B.report,4)}`
+  ].join("\n\n");
+}
+function formatCompareSimpleReport(ctx){
+  return [
+    "簡略比較報告",
+    ctx.question?`問事：${ctx.question}`:"",
+    `比較結論\n${compareSummaryText(ctx)}`,
+    `推薦理由\n${ctx.winner.name}目前較可用；${ctx.winner.report.headline}`,
+    `另一選項風險\n${ctx.weaker.name}不是完全不能選，但要先處理：${compareRiskText(ctx.weaker)}`,
+    `今天怎麼做\n- 先以${ctx.winner.name}為主線小步推進。\n- ${compareActionText(ctx.winner)}\n- 若仍想選${ctx.weaker.name}，先縮小投入、延後承諾、補齊條件。`,
+    `主要依據\n${compareEvidenceText(ctx)}`
+  ].filter(Boolean).join("\n\n");
+}
+function formatCompareDetailReport(ctx){
+  return [
+    "詳細比較報告",
+    taixuReportIntro("detail"),
+    ctx.question?`問事：${ctx.question}`:"",
+    `一、比較總斷\n${compareSummaryText(ctx)}`,
+    `二、${ctx.A.name}目前狀態\n${ctx.A.report.present}`,
+    `三、${ctx.B.name}目前狀態\n${ctx.B.report.present}`,
+    `四、為什麼推薦${ctx.winner.name}\n${ctx.verdict}\n${ctx.winner.report.opportunity}`,
+    `五、${ctx.A.name}主要風險\n${ctx.A.report.obstacle}`,
+    `六、${ctx.B.name}主要風險\n${ctx.B.report.obstacle}`,
+    `七、若選${ctx.A.name}\n${compareActionText(ctx.A)}\n避開：${compareRiskText(ctx.A)}`,
+    `八、若選${ctx.B.name}\n${compareActionText(ctx.B)}\n避開：${compareRiskText(ctx.B)}`,
+    `九、回驗方式\n- 看哪個選項先出現明確回覆、文件、款項或可執行條件。\n- 看哪個選項的阻礙先被降級。\n- 事後回填結果，記錄應在 A 還是 B。`,
+    `十、比較依據\n${compareEvidenceText(ctx)}`
+  ].filter(Boolean).join("\n\n");
+}
+function formatCompareTeacherReport(ctx){
+  return [
+    "老師教學比較",
+    "這是同一件事的兩個選項，所以不能分開起兩張盤亂比。正確讀法是：同一張盤、同一個時間、同一個題型，分別看 A、B 兩個鎖定宮位。",
+    ctx.question?`問事：${ctx.question}`:"",
+    `第一步，先看兩個宮位\nA 是 ${ctx.A.name}：${ctx.A.num} 號，鎖 ${ctx.A.palace.key}${ctx.A.palace.number}宮，${ctx.A.score}/100｜${ctx.A.grade}。\nB 是 ${ctx.B.name}：${ctx.B.num} 號，鎖 ${ctx.B.palace.key}${ctx.B.palace.number}宮，${ctx.B.score}/100｜${ctx.B.grade}。`,
+    `第二步，看勝負不是只看分數\n${ctx.verdict}\n分數差距：${ctx.diff}。差距小於 10 時，不宜硬說誰一定贏；要看條件是否清楚、風險是否容易降級。`,
+    `第三步，看 A 的用法\n${ctx.A.report.headline}\n取用：${compareActionText(ctx.A)}\n避險：${compareRiskText(ctx.A)}`,
+    `第四步，看 B 的用法\n${ctx.B.report.headline}\n取用：${compareActionText(ctx.B)}\n避險：${compareRiskText(ctx.B)}`,
+    `第五步，落到現實決策\n先選${ctx.winner.name}作主線，但不要把${ctx.weaker.name}完全丟掉；如果現實條件反而是${ctx.weaker.name}先落實，就用小步試做驗證，不要一次重押。`,
+    `逐條依據\n${compareEvidenceText(ctx)}`
+  ].filter(Boolean).join("\n\n");
+}
+function formatCompareReport(mode){
+  const ctx=buildCompareContext();
+  if(mode==="teacher")return formatCompareTeacherReport(ctx);
+  if(mode==="detail")return formatCompareDetailReport(ctx);
+  return formatCompareSimpleReport(ctx);
+}
 function makeReport(mode=reportMode){
   if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText();
+  if(isCompareChart())return formatCompareReport(mode);
   if(!selectedNum)return [`九宮奇門報告`,question?`問事：${question}`:"",`時間：${m.solar}`,`尚未選 1-9 鎖宮。`].filter(Boolean).join("\n");
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   if(mode==="simple")return formatSimpleReport(report,question);
   if(mode==="teacher")return formatTeacherReport(report,question,m,p);
   return formatDetailReport(report,question,m);
 }
-function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), chart, selectedNum, report:selectedNum&&chart?makeSoulReport(getPalaceByNum(selectedNum),scorePalace(getPalaceByNum(selectedNum),chart.settings.qtype)):null}}
+function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), chart, selectedNum, compareSelections:isCompareChart()?compareOptions():null, report:chart?makeReport(reportMode):null}}
 function currentCase(){
-  if(!chart||!selectedNum)throw new Error("請先起盤並選數字。");
+  if(!chart||(!selectedNum&&!isCompareChart()))throw new Error("請先起盤並選數字。");
+  if(isCompareChart()){
+    const ctx=buildCompareContext();
+    const feedback=caseFeedbackFromForm();
+    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:`A ${ctx.A.name}:${ctx.A.palace.key}${ctx.A.palace.number}｜B ${ctx.B.name}:${ctx.B.palace.key}${ctx.B.palace.number}`,result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,compare:{A:{name:ctx.A.name,num:ctx.A.num,score:ctx.A.score,palace:`${ctx.A.palace.key}${ctx.A.palace.number}`},B:{name:ctx.B.name,num:ctx.B.num,score:ctx.B.score,palace:`${ctx.B.palace.key}${ctx.B.palace.number}`},winner:ctx.winner.side},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
+  }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   const feedback=caseFeedbackFromForm();
   return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum,lockedPalace:p?`${p.key}${p.number}`:"",result:s.denied?"強烈不建議":`${s.score}/100 ${s.grade.name}`,summary:report.headline,report,feedback,payload:chartPayload()};
@@ -944,12 +1175,13 @@ function renderCases(){
   if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
+    const numLabel=c.compare?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
     return `<div class="case-card" data-case-id="${escapeHTML(c.id)}">
     <div>
       <h3>${escapeHTML(c.title)}</h3>
       <small>${escapeHTML(c.qtype)}｜${escapeHTML(c.lockedPalace)}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
       ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
-      <div class="case-tags"><span class="tab">${escapeHTML(c.selectedNum)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span></div>
+      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span></div>
       ${fb.notes?`<small>備註：${escapeHTML(fb.notes)}</small>`:""}
     </div>
     <div class="case-actions">
@@ -972,7 +1204,7 @@ function init(){
   renderAll();
   showView("ask");
   document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.view)));
-  document.getElementById("quickExample").onclick=()=>{setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
+  document.getElementById("quickExample").onclick=()=>{setSelectionMode("single"); compareSelections={A:null,B:null}; activeCompareSide="A"; setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
   document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
   document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
   document.getElementById("resetInquiryAsk").onclick=resetInquiry;
@@ -996,6 +1228,9 @@ function init(){
   }));
   document.getElementById("qtype").addEventListener("change",()=>{if(chart&&!inquiryLocked){chart.settings.qtype=document.getElementById("qtype").value; renderAll();}});
   document.getElementById("inquiryMode").addEventListener("change",()=>{if(!inquiryLocked)renderAll();});
+  document.getElementById("selectionMode").addEventListener("change",()=>{if(inquiryLocked)return; if(!isCompareMode()){compareSelections={A:null,B:null}; activeCompareSide="A"} renderAll();});
+  document.querySelectorAll(".compare-side").forEach(btn=>btn.addEventListener("click",()=>{if(inquiryLocked)return; activeCompareSide=btn.dataset.side||"A"; renderAll();}));
+  ["optionAName","optionBName"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{if(chart&&isCompareChart()){chart.settings.compareOptions=compareOptions(); renderAll();}}));
   ["doorMode","ziChange"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{if(chart)buildChart()}));
   registerServiceWorker();
 }
