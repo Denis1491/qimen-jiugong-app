@@ -466,7 +466,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=copy-bank-10").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=copy-bank-11").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -803,11 +803,43 @@ function sevenLayerMethodBlock(){
 function evidenceNarrative(ev){
   return taixuEvidenceSentence(ev);
 }
+function compactText(text,max=260){
+  const clean=String(text||"").replace(/\s+/g," ").trim();
+  if(clean.length<=max)return clean;
+  const cut=clean.slice(0,max);
+  const last=Math.max(cut.lastIndexOf("。"),cut.lastIndexOf("；"),cut.lastIndexOf("，"));
+  return (last>80?cut.slice(0,last):cut).replace(/[。；，]+$/,"")+"。";
+}
+function compactBulletBlock(text,count=3){
+  const parts=String(text||"").split(/\n|。/).map(cleanSentence).filter(Boolean);
+  return uniqueText(parts).slice(0,count).map(x=>`- ${x}。`).join("\n");
+}
+function shortEvidenceBlock(report,count=3){
+  const items=resultEvidenceItems(report.evidence).slice(0,count);
+  return items.map((ev,i)=>`${i+1}. ${ev.source}｜${ev.name}：${compactText(taixuEvidenceSentence(ev),150)}`).join("\n");
+}
+function teacherEvidenceBlock(report){
+  const items=resultEvidenceItems(report.evidence);
+  return items.map((ev,i)=>`${i+1}. ${ev.source}看${ev.name}\n${taixuEvidenceSentence(ev)}`).join("\n\n");
+}
+function teacherLayerArticle(report,p,qtype){
+  const dir=PALACE_DIR[p.key]||"中央";
+  const flags=p.flags.length?p.flags.map(modifierName).join("、"):"沒有明顯空、墓、迫、刑、馬";
+  return [
+    `第一步，先定場域。\n這次鎖在${p.key}宮，方位是${dir}。宮位不是拿來裝飾的，它先告訴我們：這件事主要會在哪個場域發生。`,
+    `第二步，看行動入口。\n門是${p.door||"無門"}。同一件事，如果門不同，用法就不同；能不能推，不只看分數，也要看方法對不對。`,
+    `第三步，看事情品質。\n星是${p.star||"無星"}。星負責判斷事情是穩、亂、快、慢、病、口舌、表現，這會決定你該加速還是降速。`,
+    `第四步，看人心暗面。\n神是${p.god||"無神"}。神看的是背後的人心、助力、隱情與情緒，很多局不是事情難，是人心沒有流通。`,
+    `第五步，看外在與底層。\n天盤干是${p.top.join("、")||"無"}，看外面正在發生什麼；地盤干是${p.bottom.join("、")||"無"}，看底層原因在哪裡。`,
+    `第六步，修正吉凶。\n特殊象是${flags}。這一層不負責恐嚇，而是告訴你：事情是未實、被壓、受迫、內耗，還是需要移動。`,
+    `第七步，套回題型。\n本題問「${qtype}」。所以同一個景門，問工作要看簡報、報告、主管回覆；問感情才看面子、聊天紀錄與說法。`
+  ].join("\n\n");
+}
 function formatNinePartReport(report,question,mode="detail"){
-  const title=mode==="simple"?"九宮奇門鎖單宮報告":mode==="teacher"?"老師解盤模式":"九宮奇門鎖單宮詳細報告";
+  const title="九宮奇門鎖單宮詳細報告";
   return [
     title,
-    taixuReportIntro(mode),
+    taixuReportIntro("detail"),
     question?`問事：${question}`:"",
     `一、一句話總斷\n${report.headline}\n分數與傾向：${report.score}/100｜${report.level}`,
     `二、目前狀態\n${report.present}`,
@@ -820,11 +852,39 @@ function formatNinePartReport(report,question,mode="detail"){
     `九、解盤依據\n${reportEvidenceBlock(report,mode)}`
   ].filter(Boolean).join("\n\n");
 }
-function formatSimpleReport(report,question){return formatNinePartReport(report,question,"simple")}
+function formatSimpleReport(report,question){
+  return [
+    "太虛快讀版",
+    taixuReportIntro("simple"),
+    question?`問事：${question}`:"",
+    `結論\n${report.headline}`,
+    `傾向\n${report.score}/100｜${report.level}`,
+    `現在最重要的事\n${compactText(report.present,220)}`,
+    `今天先做\n${compactBulletBlock(report.actionPlan,3)}`,
+    `今天先避開\n${compactBulletBlock(report.avoidPlan,3)}`,
+    `風水微調\n${compactText(report.fengShui,220)}`,
+    `驗證\n${listText(report.verifyPoints.slice(0,2))}`,
+    `主要依據\n${shortEvidenceBlock(report,3)}`
+  ].filter(Boolean).join("\n\n");
+}
 function formatDetailReport(report,question,m){return formatNinePartReport(report,question,"detail")}
 function formatTeacherReport(report,question,m,p){
   const stems=`天盤干：${p.top.join("、")||"無"}；地盤干：${p.bottom.join("、")||"無"}`;
-  return [`起盤資料：${m.solar}｜${m.yearGZ}年 ${m.monthGZ}月 ${m.dayGZ}日 ${m.hourGZ}時｜${m.ju}｜空亡${m.kongwang}｜驛馬${m.yima}`,`鎖定宮位：${report.palaceSummary}`,`宮門星神干：${p.key}宮、${p.door||"無門"}、${p.star||"無星"}、${p.god||"無神"}、${stems}`,`特殊象：${p.flags.length?p.flags.map(flagText).join("；"):"無明顯空亡、入墓、門迫、擊刑、驛馬標記。"}`,formatNinePartReport(report,question,"teacher"),`提醒：本工具為奇門遁甲學習、決策輔助與風險降級用途，不取代醫療、法律、投資或專業意見。重大決策請結合現實資料判斷；風水只處理地利的一部分，不能代替人的努力與選擇。`].join("\n\n");
+  return [
+    "太虛老師拆盤版",
+    taixuReportIntro("teacher"),
+    question?`問事：${question}`:"",
+    `起盤資料\n${m.solar}｜${m.yearGZ}年 ${m.monthGZ}月 ${m.dayGZ}日 ${m.hourGZ}時｜${m.ju}｜空亡${m.kongwang}｜驛馬${m.yima}`,
+    `鎖定宮位\n${report.palaceSummary}`,
+    `盤面骨架\n${p.key}宮、${p.door||"無門"}、${p.star||"無星"}、${p.god||"無神"}、${stems}\n特殊象：${p.flags.length?p.flags.map(flagText).join("；"):"無明顯空亡、入墓、門迫、擊刑、驛馬標記。"}`,
+    `老師總斷\n${report.headline}\n分數不是命令，只是目前能量天平的傾向：${report.score}/100｜${report.level}`,
+    `這盤怎麼讀\n${teacherLayerArticle(report,p,chart.settings.qtype)}`,
+    `取用方法\n${report.actionPlan}`,
+    `避險方法\n${report.avoidPlan}`,
+    `逐條依據\n${teacherEvidenceBlock(report)}`,
+    `回驗方式\n${listText(report.verifyPoints)}`,
+    `提醒\n本工具為奇門遁甲學習、決策輔助與風險降級用途，不取代醫療、法律、投資或專業意見。重大決策請結合現實資料判斷；風水只處理地利的一部分，不能代替人的努力與選擇。`
+  ].filter(Boolean).join("\n\n");
 }
 function makeReport(mode=reportMode){
   if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText();
