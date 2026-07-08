@@ -193,6 +193,28 @@ function applyQuestionRewrite(){
   input.value=buildQuestionRewrite(questionText());
   renderQuestionDiagnosis();
 }
+function suggestDecisionOptions(text,diagnosis=diagnoseQuestion(text)){
+  const qtype=diagnosis.suggestedQtype;
+  if(qtype==="感情")return ["今天主動聯絡","明天再說","先發簡短訊息","暫時不動"];
+  if(qtype==="合作")return ["直接談合作","先短約測試","只交換資料","暫時不合作"];
+  if(qtype==="財運")return ["照原計畫投入","先小額測試","先查證條件","暫時不動用資金"];
+  if(qtype==="工作")return ["今天主動推進","先補資料再談","先做小交付","暫時觀察"];
+  if(qtype==="健康")return ["先安排檢查","先休息觀察","先記錄症狀","暫不做大調整"];
+  if(qtype==="風水")return ["今天小整理","先不大動","只調整光線與動線","暫時觀察"];
+  return ["今天主動做","明天再說","先做小測試","暫時不動"];
+}
+function applyDecisionOptionDrafts(){
+  if(inquiryLocked)return;
+  const d=diagnoseQuestion(questionText());
+  const opts=suggestDecisionOptions(questionText(),d);
+  setSelectionMode("compare");
+  compareSides().forEach((side,i)=>{
+    const input=document.getElementById(`option${side}Name`);
+    if(input)input.value=opts[i]||`選項 ${side}`;
+  });
+  renderQuestionDiagnosis();
+  renderAll();
+}
 function inquiryMode(){return document.getElementById("inquiryMode")?.value||"formal"}
 function isFormalInquiry(){return inquiryMode()==="formal"}
 function selectionMode(){return document.getElementById("selectionMode")?.value||"single"}
@@ -659,7 +681,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-19").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-20").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1871,6 +1893,7 @@ function init(){
   document.getElementById("questionText").addEventListener("input",()=>{renderQuestionDiagnosis();});
   document.getElementById("applyDiagnosisQtype").onclick=applyDiagnosisQtype;
   document.getElementById("applyQuestionRewrite").onclick=applyQuestionRewrite;
+  document.getElementById("applyDecisionOptions").onclick=applyDecisionOptionDrafts;
   document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
   document.getElementById("resetInquiryAsk").onclick=resetInquiry;
   document.getElementById("resetInquiryChart").onclick=resetInquiry;
@@ -2022,6 +2045,13 @@ function testQuestionRewrite(){
   console.assert(ok,"V5: question rewrite should turn broad questions into actionable questions.");
   return ok;
 }
+function testDecisionOptionDrafts(){
+  const love=suggestDecisionOptions("我要不要找他？",diagnoseQuestion("我要不要找他？"));
+  const money=suggestDecisionOptions("這筆錢要不要投入？",diagnoseQuestion("這筆錢要不要投入？"));
+  const ok=love.includes("先發簡短訊息")&&money.includes("先小額測試")&&money.includes("暫時不動用資金");
+  console.assert(ok,"V5: decision option drafts should create actionable compare options.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -2040,5 +2070,6 @@ function runV5DevTests(){
   testCaseTrainingTask();
   testCaseCalibrationSummary();
   testQuestionRewrite();
+  testDecisionOptionDrafts();
 }
 init();

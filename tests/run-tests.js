@@ -35,6 +35,7 @@ assert(html.includes("comparePanel"), "compare mode panel is missing");
 assert(html.includes("questionDiagnosis"), "question diagnosis panel is missing");
 assert(html.includes("applyDiagnosisQtype"), "apply diagnosis qtype button is missing");
 assert(html.includes("applyQuestionRewrite"), "apply question rewrite button is missing");
+assert(html.includes("applyDecisionOptions"), "apply decision option drafts button is missing");
 assert(html.includes("optionAName") && html.includes("optionBName") && html.includes("optionCName") && html.includes("optionDName"), "compare option fields are missing");
 assert(html.includes("caseAfterAction"), "after-action feedback field is missing");
 assert(html.includes("caseVerifiedSymbol"), "verified symbol feedback field is missing");
@@ -47,7 +48,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-19"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-20"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -69,6 +70,8 @@ assert(app.includes("scorePalaceV5"), "V5 scoring function is missing");
 assert(app.includes("diagnoseQuestion"), "question diagnosis function is missing");
 assert(app.includes("buildQuestionRewrite"), "question rewrite helper is missing");
 assert(app.includes("applyQuestionRewrite"), "question rewrite apply handler is missing");
+assert(app.includes("suggestDecisionOptions"), "decision option draft helper is missing");
+assert(app.includes("applyDecisionOptionDrafts"), "decision option draft apply handler is missing");
 assert(app.includes("problemDiagnosis"), "problem diagnosis should be stored with charts/cases");
 assert(app.includes("buildRiskProfile"), "risk profile builder is missing");
 assert(app.includes("riskProfileText"), "risk profile report text is missing");
@@ -113,6 +116,7 @@ assert(app.includes("testCaseReviewCsv"), "case review CSV dev test is missing")
 assert(app.includes("testCaseTrainingTask"), "case training task dev test is missing");
 assert(app.includes("testCaseCalibrationSummary"), "case calibration summary dev test is missing");
 assert(app.includes("testQuestionRewrite"), "question rewrite dev test is missing");
+assert(app.includes("testDecisionOptionDrafts"), "decision option draft dev test is missing");
 assert(app.includes("reportSectionClass"), "report section layout classifier is missing");
 assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
 assert(style.includes(".report-section"), "structured report section styles are missing");
