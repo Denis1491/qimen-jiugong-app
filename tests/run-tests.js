@@ -55,9 +55,10 @@ assert(html.includes("copyCaseReviewChecklist"), "case review checklist copy but
 assert(html.includes("copyFilteredCaseReviewChecklist"), "filtered case review checklist copy button is missing");
 assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary copy button is missing");
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
+assert(html.includes("exportFilteredCasesCsv"), "filtered case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-28"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-29"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -117,6 +118,7 @@ assert(app.includes("buildFilteredCaseReviewChecklist"), "filtered case review c
 assert(app.includes("copyFilteredCaseReviewChecklist"), "filtered case review checklist copy handler is missing");
 assert(app.includes("filteredReviewCases"), "filtered case review helper is missing");
 assert(app.includes("casesToReviewCsv"), "case review CSV exporter is missing");
+assert(app.includes("exportFilteredCasesCsv"), "filtered case review CSV exporter is missing");
 assert(app.includes("csvCell"), "CSV cell escaping helper is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");
 assert(app.includes("calibrationReadinessLabel"), "calibration readiness label helper is missing");

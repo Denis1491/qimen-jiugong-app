@@ -591,11 +591,15 @@ function csvCell(value){
   return /[",\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
 }
 function casesToReviewCsv(cases){
-  const headers=["savedAt","title","qtype","decisionIntent","question","selectedNum","lockedPalace","result","compareChosen","compareHit","compareNote","accuracy","hitArea","afterAction","verifiedSymbol","riskReduced","deviationResult","calibration","completion","missing","summary"];
+  const headers=["priorityRank","priorityLabel","priorityReason","savedAt","title","qtype","decisionIntent","question","selectedNum","lockedPalace","result","compareChosen","compareHit","compareNote","accuracy","hitArea","afterAction","verifiedSymbol","riskReduced","deviationResult","calibration","completion","missing","summary"];
   const rows=(cases||[]).map(c=>{
     const fb=c.feedback||{};
     const completion=caseCompletion(c);
+    const priority=caseReviewPriority(c);
     return [
+      priority.rank,
+      priority.label,
+      priority.reason,
       c.savedAt||"",
       c.title||"",
       c.qtype||"",
@@ -620,6 +624,13 @@ function casesToReviewCsv(cases){
     ];
   });
   return [headers,...rows].map(row=>row.map(csvCell).join(",")).join("\n");
+}
+function exportFilteredCasesCsv(){
+  const cases=filteredReviewCases();
+  if(!cases.length){toast("目前篩選沒有案例可匯出。"); return}
+  const filter=document.getElementById("caseReviewFilter")?.value||"all";
+  const suffix=String(filter||"all").replace(/[^a-z0-9-]+/gi,"-").toLowerCase();
+  download(`qimen_jiugong_case_reviews_${suffix}.csv`,casesToReviewCsv(cases),"text/csv;charset=utf-8");
 }
 async function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -688,7 +699,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-28").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-29").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -2201,6 +2212,7 @@ function init(){
   document.getElementById("copyCaseCalibrationSummary").onclick=copyCaseCalibrationSummary;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
+  document.getElementById("exportFilteredCasesCsv").onclick=exportFilteredCasesCsv;
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
   document.getElementById("caseSearch").addEventListener("input",renderCases);
   document.getElementById("caseReviewFilter").addEventListener("change",renderCases);
@@ -2352,8 +2364,8 @@ function testFilteredCaseReviewChecklist(){
 }
 function testCaseReviewCsv(){
   const text=casesToReviewCsv([{savedAt:"2026-07-08",title:"測試,案例",qtype:"工作",outcome:"有結果",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作",verifiedSymbol:"驚門",riskReduced:"partial",calibration:"downgrade",compareChosen:"B",compareHit:"mixed",compareNote:"B 應驗，A 也有風險"}}]);
-  const ok=text.includes("completion")&&text.includes("compareChosen")&&text.includes('"測試,案例"')&&text.includes("需改成風險降級")&&text.includes("部分降低")&&text.includes("選項 B")&&text.includes("混合應驗");
-  console.assert(ok,"V5: review CSV should export analysis-ready case fields.");
+  const ok=text.includes("priorityRank")&&text.includes("priorityLabel")&&text.includes("priorityReason")&&text.includes("completion")&&text.includes("compareChosen")&&text.includes('"測試,案例"')&&text.includes("P2 待補完整")&&text.includes("需改成風險降級")&&text.includes("部分降低")&&text.includes("選項 B")&&text.includes("混合應驗");
+  console.assert(ok,"V5: review CSV should export analysis-ready case fields and review priority.");
   return ok;
 }
 function testCaseTrainingTask(){
