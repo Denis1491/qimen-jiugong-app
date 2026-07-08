@@ -7,8 +7,8 @@
   <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
   <meta name="theme-color" content="#2f332b">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.0-decision-22">
-  <link rel="stylesheet" href="style.css?v=5.0-decision-22">
+  <link rel="manifest" href="manifest.webmanifest?v=5.0-decision-23">
+  <link rel="stylesheet" href="style.css?v=5.0-decision-23">
 </head>
 <body>
 <div class="shell">
@@ -178,7 +178,10 @@
       <div class="field"><label for="caseReviewFilter">回驗篩選</label><select id="caseReviewFilter"><option value="all">全部案例</option><option value="unreviewed">待回填結果</option><option value="incomplete">待補完整</option><option value="complete">已完整</option></select></div>
       <div class="field"><label for="caseAccuracy">準確度</label><select id="caseAccuracy"><option value="">未回填</option><option value="5">5 星，很準</option><option value="4">4 星，大致準</option><option value="3">3 星，一半一半</option><option value="2">2 星，偏不準</option><option value="1">1 星，不準</option></select></div>
       <div class="field"><label for="caseHitArea">應在哪個部分</label><select id="caseHitArea"><option value="">未分類</option><option>財</option><option>工作</option><option>感情</option><option>口舌</option><option>健康</option><option>風水</option><option>其他</option></select></div>
+      <div class="field"><label for="caseCompareChosen">比較題實際採用</label><select id="caseCompareChosen"><option value="">未回填</option><option value="A">選項 A</option><option value="B">選項 B</option><option value="C">選項 C</option><option value="D">選項 D</option><option value="none">沒有採用</option><option value="unclear">看不出來</option></select></div>
+      <div class="field"><label for="caseCompareHit">比較題實際應驗</label><select id="caseCompareHit"><option value="">未回填</option><option value="A">選項 A</option><option value="B">選項 B</option><option value="C">選項 C</option><option value="D">選項 D</option><option value="none">都未應驗</option><option value="mixed">混合應驗</option><option value="unclear">仍待觀察</option></select></div>
       <div class="field"><label for="caseNotes">回驗備註</label><input id="caseNotes" placeholder="例如：應在口舌，不是財務"></div>
+      <div class="field"><label for="caseCompareNote">比較回驗備註</label><input id="caseCompareNote" placeholder="例如：最後採用 B；A 的口舌風險也有出現"></div>
       <div class="field"><label for="caseAfterAction">是否照建議做</label><input id="caseAfterAction" placeholder="例如：有照做，先傳短訊息；或沒有照做"></div>
       <div class="field"><label for="caseVerifiedSymbol">哪個象應驗</label><input id="caseVerifiedSymbol" placeholder="例如：驚門應在口舌；空亡應在延遲"></div>
       <div class="field"><label for="caseRiskReduced">風險是否降低</label><select id="caseRiskReduced"><option value="">未回填</option><option value="yes">有降低</option><option value="partial">部分降低</option><option value="no">沒有降低</option><option value="unknown">看不出來</option></select></div>
@@ -190,9 +193,9 @@
   </section>
   </section>
 </div>
-<script src="engine.js?v=5.0-decision-22" defer></script>
-<script src="qimen_soul_copy_bank.js?v=5.0-decision-22" defer></script>
-<script src="app.js?v=5.0-decision-22" defer></script>
+<script src="engine.js?v=5.0-decision-23" defer></script>
+<script src="qimen_soul_copy_bank.js?v=5.0-decision-23" defer></script>
+<script src="app.js?v=5.0-decision-23" defer></script>
 </body>
 </html>
 

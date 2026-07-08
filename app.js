@@ -131,6 +131,10 @@ function escapeHTML(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;",
 function parseDT(){const v=document.getElementById("dt").value;if(!v)return null;const [date,time]=v.split("T");const [y,m,d]=date.split("-").map(Number);const [hh,mm]=time.split(":").map(Number);return {y,m,d,hh,mm}}
 function questionText(){return (document.getElementById("questionText")?.value||"").trim()}
 function keywordHit(text,words){return words.some(w=>text.includes(w))}
+function formatNumber(value,digits=0){
+  const num=Number(value);
+  return Number.isFinite(num)?num.toFixed(digits):"0";
+}
 function diagnoseQuestion(text){
   const q=String(text||"").trim();
   const normalized=q.replace(/\s+/g,"");
@@ -587,7 +591,7 @@ function csvCell(value){
   return /[",\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
 }
 function casesToReviewCsv(cases){
-  const headers=["savedAt","title","qtype","decisionIntent","question","selectedNum","lockedPalace","result","accuracy","hitArea","afterAction","verifiedSymbol","riskReduced","deviationResult","calibration","completion","missing","summary"];
+  const headers=["savedAt","title","qtype","decisionIntent","question","selectedNum","lockedPalace","result","compareChosen","compareHit","compareNote","accuracy","hitArea","afterAction","verifiedSymbol","riskReduced","deviationResult","calibration","completion","missing","summary"];
   const rows=(cases||[]).map(c=>{
     const fb=c.feedback||{};
     const completion=caseCompletion(c);
@@ -600,6 +604,9 @@ function casesToReviewCsv(cases){
       c.selectedNum||"",
       c.lockedPalace||"",
       c.result||"",
+      compareOptionLabel(fb.compareChosen||c.compareChosen),
+      compareOptionLabel(fb.compareHit||c.compareHit),
+      fb.compareNote||c.compareNote||"",
       fb.accuracy||"",
       fb.hitArea||"",
       fb.afterAction||c.afterAction||"",
@@ -681,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-22").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-23").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1575,7 +1582,7 @@ function currentCase(){
     const ctx=buildCompareContext();
     const feedback=caseFeedbackFromForm();
     const compareRecord=Object.fromEntries(ctx.choices.map(choice=>[choice.side,{name:choice.name,num:choice.num,score:choice.score,decisionScore:choice.decision.decisionScore,palace:`${choice.palace.key}${choice.palace.number}`,decision:choice.decision}]));
-    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:ctx.choices.map(choice=>`${choice.side} ${choice.name}:${choice.palace.key}${choice.palace.number}`).join("｜"),selfPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.selfPalace.key}`).join("｜"),matterPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.matterPalace.key}`).join("｜"),result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,threePalaceSnapshot:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.threePalace])),scoreBreakdown:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.scoreBreakdown])),decisionCards:ctx.ranked.map(compareDecisionCard),decisionOptions:ctx.ranked.map(choice=>({side:choice.side,name:choice.name,num:choice.num,palace:`${choice.palace.key}${choice.palace.number}`,score:choice.score,decision:choice.decision,decisionCard:compareDecisionCard(choice)})),userFeedback:feedback,compare:{...compareRecord,winner:ctx.winner.side,ranking:ctx.ranked.map(choice=>choice.side)},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
+    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,compareChosen:feedback.compareChosen,compareHit:feedback.compareHit,compareNote:feedback.compareNote,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:ctx.choices.map(choice=>`${choice.side} ${choice.name}:${choice.palace.key}${choice.palace.number}`).join("｜"),selfPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.selfPalace.key}`).join("｜"),matterPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.matterPalace.key}`).join("｜"),result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,threePalaceSnapshot:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.threePalace])),scoreBreakdown:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.scoreBreakdown])),decisionCards:ctx.ranked.map(compareDecisionCard),decisionOptions:ctx.ranked.map(choice=>({side:choice.side,name:choice.name,num:choice.num,palace:`${choice.palace.key}${choice.palace.number}`,score:choice.score,decision:choice.decision,decisionCard:compareDecisionCard(choice)})),userFeedback:feedback,compare:{...compareRecord,winner:ctx.winner.side,ranking:ctx.ranked.map(choice=>choice.side)},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
   }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   const feedback=caseFeedbackFromForm();
@@ -1587,6 +1594,9 @@ function caseFeedbackFromForm(){
     accuracy:document.getElementById("caseAccuracy")?.value||"",
     hitArea:document.getElementById("caseHitArea")?.value||"",
     notes:(document.getElementById("caseNotes")?.value||"").trim(),
+    compareChosen:document.getElementById("caseCompareChosen")?.value||"",
+    compareHit:document.getElementById("caseCompareHit")?.value||"",
+    compareNote:(document.getElementById("caseCompareNote")?.value||"").trim(),
     afterAction:(document.getElementById("caseAfterAction")?.value||"").trim(),
     verifiedSymbol:(document.getElementById("caseVerifiedSymbol")?.value||"").trim(),
     riskReduced:document.getElementById("caseRiskReduced")?.value||"",
@@ -1600,6 +1610,9 @@ function fillCaseForm(c){
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value=c?.feedback?.accuracy||"";
   const area=document.getElementById("caseHitArea"); if(area)area.value=c?.feedback?.hitArea||"";
   const notes=document.getElementById("caseNotes"); if(notes)notes.value=c?.feedback?.notes||"";
+  const compareChosen=document.getElementById("caseCompareChosen"); if(compareChosen)compareChosen.value=c?.feedback?.compareChosen||c?.compareChosen||"";
+  const compareHit=document.getElementById("caseCompareHit"); if(compareHit)compareHit.value=c?.feedback?.compareHit||c?.compareHit||"";
+  const compareNote=document.getElementById("caseCompareNote"); if(compareNote)compareNote.value=c?.feedback?.compareNote||c?.compareNote||"";
   const after=document.getElementById("caseAfterAction"); if(after)after.value=c?.feedback?.afterAction||c?.afterAction||"";
   const symbol=document.getElementById("caseVerifiedSymbol"); if(symbol)symbol.value=c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"";
   const risk=document.getElementById("caseRiskReduced"); if(risk)risk.value=c?.feedback?.riskReduced||c?.riskReduced||"";
@@ -1612,6 +1625,9 @@ function clearCaseFeedbackForm(){
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value="";
   const area=document.getElementById("caseHitArea"); if(area)area.value="";
   const notes=document.getElementById("caseNotes"); if(notes)notes.value="";
+  const compareChosen=document.getElementById("caseCompareChosen"); if(compareChosen)compareChosen.value="";
+  const compareHit=document.getElementById("caseCompareHit"); if(compareHit)compareHit.value="";
+  const compareNote=document.getElementById("caseCompareNote"); if(compareNote)compareNote.value="";
   const after=document.getElementById("caseAfterAction"); if(after)after.value="";
   const symbol=document.getElementById("caseVerifiedSymbol"); if(symbol)symbol.value="";
   const risk=document.getElementById("caseRiskReduced"); if(risk)risk.value="";
@@ -1629,7 +1645,7 @@ function updateCaseResult(){
   const cases=loadCases(); const idx=cases.findIndex(c=>c.id===activeCaseId);
   if(idx<0){toast("找不到目前回看的案例。"); return}
   const feedback=caseFeedbackFromForm();
-  cases[idx]={...cases[idx],title:document.getElementById("caseTitle").value.trim()||cases[idx].title,outcome:feedback.outcome,afterAction:feedback.afterAction,verifiedSymbol:feedback.verifiedSymbol,riskReduced:feedback.riskReduced,deviationResult:feedback.deviationResult,calibration:feedback.calibration,userFeedback:feedback,feedback,updatedAt:new Date().toISOString()};
+  cases[idx]={...cases[idx],title:document.getElementById("caseTitle").value.trim()||cases[idx].title,outcome:feedback.outcome,afterAction:feedback.afterAction,compareChosen:feedback.compareChosen,compareHit:feedback.compareHit,compareNote:feedback.compareNote,verifiedSymbol:feedback.verifiedSymbol,riskReduced:feedback.riskReduced,deviationResult:feedback.deviationResult,calibration:feedback.calibration,userFeedback:feedback,feedback,updatedAt:new Date().toISOString()};
   saveCases(cases); renderCases(); toast("回驗結果已更新。");
 }
 function buildCaseReviewChecklist(c){
@@ -1650,6 +1666,9 @@ function buildCaseReviewChecklist(c){
     `實際結果：${fb.outcome||c?.outcome||""}`,
     `準確度：${fb.accuracy||""}`,
     `應事分類：${fb.hitArea||""}`,
+    `比較題實際採用：${compareOptionLabel(fb.compareChosen||c?.compareChosen)}`,
+    `比較題實際應驗：${compareOptionLabel(fb.compareHit||c?.compareHit)}`,
+    `比較回驗備註：${fb.compareNote||c?.compareNote||""}`,
     `是否照建議做：${fb.afterAction||c?.afterAction||""}`,
     `哪個象應驗：${fb.verifiedSymbol||c?.verifiedSymbol||""}`,
     `風險是否降低：${riskReducedLabel(fb.riskReduced||c?.riskReduced)}`,
@@ -1711,6 +1730,9 @@ function actionEffectKey(actionText,riskReduced){
 function riskReducedLabel(value){
   return {yes:"有降低",partial:"部分降低",no:"沒有降低",unknown:"看不出來"}[value]||"未回填";
 }
+function compareOptionLabel(value){
+  return {A:"選項 A",B:"選項 B",C:"選項 C",D:"選項 D",none:"沒有採用/都未應驗",mixed:"混合應驗",unclear:"看不出來/仍待觀察"}[value]||"未回填";
+}
 function calibrationLabel(value){
   return {accurate:"判斷準",delayed:"只是延遲","wrong-area":"應事不同","too-strong":"說得太死",downgrade:"需改成風險降級",unclear:"仍待觀察"}[value]||"未回填";
 }
@@ -1724,7 +1746,7 @@ function caseMilestone(reviewed,total=reviewed){
   return {next,done,percent,remaining,label,total};
 }
 function caseStatsFromCases(cases){
-  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),highTrace:new Map(),lowTrace:new Map()};
+  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,compareCaseCount:0,compareChosenCount:0,compareHitCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),byCompareChosen:new Map(),byCompareHit:new Map(),highTrace:new Map(),lowTrace:new Map()};
   cases.forEach(c=>{
     const accuracy=caseAccuracyValue(c);
     const verifiedSymbol=(c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"").trim();
@@ -1733,8 +1755,14 @@ function caseStatsFromCases(cases){
     const riskReduced=c?.feedback?.riskReduced||c?.riskReduced||"";
     const deviationResult=(c?.feedback?.deviationResult||c?.deviationResult||"").trim();
     const calibration=c?.feedback?.calibration||c?.calibration||"";
-    const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration);
+    const compareChosen=c?.feedback?.compareChosen||c?.compareChosen||"";
+    const compareHit=c?.feedback?.compareHit||c?.compareHit||"";
+    const isCompare=Boolean(c?.decisionOptions||c?.compare);
+    const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration)||Boolean(compareChosen)||Boolean(compareHit);
     if(hasFeedback)stats.feedbackCount+=1;
+    if(isCompare)stats.compareCaseCount+=1;
+    if(compareChosen){stats.compareChosenCount+=1; incrementBucket(stats.byCompareChosen,compareOptionLabel(compareChosen),accuracy);}
+    if(compareHit){stats.compareHitCount+=1; incrementBucket(stats.byCompareHit,compareOptionLabel(compareHit),accuracy);}
     if(afterAction)stats.actionCount+=1;
     if(deviationResult)stats.deviationCount+=1;
     if(calibration){stats.calibrationCount+=1; incrementBucket(stats.byCalibration,calibrationLabel(calibration),accuracy);}
@@ -1793,6 +1821,7 @@ function renderBucketList(items){
 }
 function caseCompletion(c){
   const fb=c?.feedback||{};
+  const isCompare=Boolean(c?.decisionOptions||c?.compare);
   const checks=[
     ["實際結果",Boolean((c?.outcome||fb.outcome||"").trim())],
     ["準確度",caseAccuracyValue(c)!==null],
@@ -1803,6 +1832,11 @@ function caseCompletion(c){
     ["偏離結果",Boolean((c?.deviationResult||fb.deviationResult||"").trim())],
     ["校準結論",Boolean(c?.calibration||fb.calibration)]
   ];
+  if(isCompare){
+    checks.push(["比較採用選項",Boolean(c?.compareChosen||fb.compareChosen)]);
+    checks.push(["比較應驗選項",Boolean(c?.compareHit||fb.compareHit)]);
+    checks.push(["比較回驗備註",Boolean((c?.compareNote||fb.compareNote||"").trim())]);
+  }
   const done=checks.filter(([,ok])=>ok).length;
   const missing=checks.filter(([,ok])=>!ok).map(([name])=>name);
   return {done,total:checks.length,missing,percent:Math.round(done/checks.length*100)};
@@ -1872,6 +1906,8 @@ function renderCaseStats(allCases=loadCases()){
     <p><strong>符號落點</strong>${renderBucketList(rankedBuckets(stats.bySymbolHitArea,5))}</p>
     <p><strong>風險降級</strong>${renderBucketList(rankedBuckets(stats.byRiskReduced,5))}</p>
     <p><strong>行動成效</strong>${renderBucketList(rankedBuckets(stats.byActionEffect,5))}</p>
+    <p><strong>比較採用</strong>${renderBucketList(rankedBuckets(stats.byCompareChosen,5))}</p>
+    <p><strong>比較應驗</strong>${renderBucketList(rankedBuckets(stats.byCompareHit,5))}</p>
     <p><strong>校準結論</strong>${renderBucketList(rankedBuckets(stats.byCalibration,5))}</p>
     <p><strong>高分常見依據</strong><span>${escapeHTML(topHigh)}</span></p>
     <p><strong>低分待查依據</strong><span>${escapeHTML(topLow)}</span></p>
@@ -1907,6 +1943,12 @@ function buildCaseCalibrationSummary(cases=loadCases()){
     "五、校準結論",
     bucketSummary(stats.byCalibration,5),
     "",
+    "五之一、比較題回驗",
+    `比較案例：${stats.compareCaseCount}`,
+    `已填採用選項：${stats.compareChosenCount}`,
+    `已填應驗選項：${stats.compareHitCount}`,
+    bucketSummary(stats.byCompareHit,5),
+    "",
     "六、回驗提醒",
     calibrationHints(stats).map(h=>`- ${h}`).join("\n"),
     "",
@@ -1927,11 +1969,12 @@ function renderCases(){
   const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
   const reviewFilter=document.getElementById("caseReviewFilter")?.value||"all";
   const cases=allCases
-    .filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query))
+    .filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.compareChosen,c.feedback?.compareChosen,c.compareHit,c.feedback?.compareHit,c.compareNote,c.feedback?.compareNote,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query))
     .filter(c=>caseMatchesReviewFilter(c,reviewFilter));
   if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
+    const compareTags=c.decisionOptions||c.compare?`<span class="tab">採用：${escapeHTML(compareOptionLabel(fb.compareChosen||c.compareChosen))}</span><span class="tab">應驗：${escapeHTML(compareOptionLabel(fb.compareHit||c.compareHit))}</span>`:"";
     const numLabel=c.decisionOptions?c.decisionOptions.map(opt=>`${opt.side}${opt.num}`).join("/"):c.compare?.A&&c.compare?.B?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
     const completion=caseCompletion(c);
     const missingText=completion.missing.length?`待補：${completion.missing.slice(0,4).join("、")}${completion.missing.length>4?"等":""}`:"回驗資料完整";
@@ -1940,8 +1983,9 @@ function renderCases(){
       <h3>${escapeHTML(c.title)}</h3>
       <small>${escapeHTML(c.qtype)}｜鎖定 ${escapeHTML(c.lockedPalace)}｜本人 ${escapeHTML(c.selfPalace||"待確認")}｜事情 ${escapeHTML(c.matterPalace||"待確認")}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
       ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
-      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span><span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span><span class="tab">${escapeHTML(calibrationLabel(c.calibration||c.feedback?.calibration))}</span></div>
+      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span>${compareTags}<span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span><span class="tab">${escapeHTML(calibrationLabel(c.calibration||c.feedback?.calibration))}</span></div>
       <div class="case-completion"><strong>回驗完整度 ${completion.done}/${completion.total}</strong><span>${escapeHTML(missingText)}</span></div>
+      ${c.compareNote||c.feedback?.compareNote?`<small>比較回驗：${escapeHTML(c.compareNote||c.feedback?.compareNote)}</small>`:""}
       ${c.deviationResult||c.feedback?.deviationResult?`<small>偏離建議後：${escapeHTML(c.deviationResult||c.feedback?.deviationResult)}</small>`:""}
       ${fb.notes?`<small>備註：${escapeHTML(fb.notes)}</small>`:""}
     </div>
@@ -2083,6 +2127,12 @@ function testCaseCompletionMissingFields(){
   console.assert(ok,"V5: case completion should expose missing feedback fields.");
   return ok;
 }
+function testCompareCaseCompletionFields(){
+  const result=caseCompletion({decisionOptions:[{side:"A"}],outcome:"有結果",feedback:{accuracy:"4",hitArea:"合作",compareChosen:"B"}});
+  const ok=result.total===11&&result.done===4&&result.missing.includes("比較應驗選項")&&result.missing.includes("比較回驗備註");
+  console.assert(ok,"V5: compare case completion should require chosen option, hit option and compare note.");
+  return ok;
+}
 function testCaseReviewFilter(){
   const blank={title:"未回驗"};
   const partial={outcome:"有結果",feedback:{accuracy:"4"}};
@@ -2098,8 +2148,8 @@ function testCaseReviewChecklist(){
   return ok;
 }
 function testCaseReviewCsv(){
-  const text=casesToReviewCsv([{savedAt:"2026-07-08",title:"測試,案例",qtype:"工作",outcome:"有結果",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作",verifiedSymbol:"驚門",riskReduced:"partial",calibration:"downgrade"}}]);
-  const ok=text.includes("completion")&&text.includes('"測試,案例"')&&text.includes("需改成風險降級")&&text.includes("部分降低");
+  const text=casesToReviewCsv([{savedAt:"2026-07-08",title:"測試,案例",qtype:"工作",outcome:"有結果",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作",verifiedSymbol:"驚門",riskReduced:"partial",calibration:"downgrade",compareChosen:"B",compareHit:"mixed",compareNote:"B 應驗，A 也有風險"}}]);
+  const ok=text.includes("completion")&&text.includes("compareChosen")&&text.includes('"測試,案例"')&&text.includes("需改成風險降級")&&text.includes("部分降低")&&text.includes("選項 B")&&text.includes("混合應驗");
   console.assert(ok,"V5: review CSV should export analysis-ready case fields.");
   return ok;
 }
@@ -2167,6 +2217,7 @@ function runV5DevTests(){
   testCaseStatsAggregation();
   testMilestoneUsesFeedbackCount();
   testCaseCompletionMissingFields();
+  testCompareCaseCompletionFields();
   testCaseReviewFilter();
   testCaseReviewChecklist();
   testCaseReviewCsv();
