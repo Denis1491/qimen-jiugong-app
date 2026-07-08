@@ -641,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-16").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-17").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1565,6 +1565,13 @@ function rankedBuckets(map,limit=4){
     .sort((a,b)=>(b.accuracyCount-a.accuracyCount)||(b.count-a.count)||a.name.localeCompare(b.name,"zh-Hant"))
     .slice(0,limit);
 }
+function bucketSummary(map,limit=5){
+  const rows=rankedBuckets(map,limit);
+  return rows.length?rows.map(item=>{
+    const avg=item.accuracyCount?`，均 ${formatNumber(item.sum/item.accuracyCount,1)} 星`:"";
+    return `- ${item.name}：${item.count} 筆${avg}`;
+  }).join("\n"):"- 待累積";
+}
 function symbolHitKey(symbol,hitArea){
   return `${symbol||"未填應驗象"} → ${hitArea||"未分類"}`;
 }
@@ -1736,6 +1743,44 @@ function renderCaseStats(allCases=loadCases()){
   </div>
   <ul class="case-hints">${calibrationHints(stats).map(h=>`<li>${escapeHTML(h)}</li>`).join("")}</ul>`;
 }
+function buildCaseCalibrationSummary(cases=loadCases()){
+  const stats=caseStatsFromCases(cases);
+  const task=caseTrainingTask(cases,stats);
+  const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
+  const riskRate=stats.riskReducedCount?`${Math.round(stats.riskReducedPositive/stats.riskReducedCount*100)}%`:"待回填";
+  return [
+    "九宮奇門 V5.0｜案例校準摘要",
+    `產生時間：${new Date().toLocaleString("zh-TW")}`,
+    "",
+    "一、進度",
+    `案例總數：${stats.total}`,
+    `已回填：${stats.feedbackCount}/100`,
+    `平均準確度：${avg}`,
+    `風險降低率：${riskRate}`,
+    `下一步：${task.title}｜${task.detail}`,
+    "",
+    "二、題型與應事",
+    bucketSummary(stats.byQtype,5),
+    "",
+    "三、符號落點",
+    bucketSummary(stats.bySymbolHitArea,5),
+    "",
+    "四、行動成效",
+    bucketSummary(stats.byActionEffect,5),
+    "",
+    "五、校準結論",
+    bucketSummary(stats.byCalibration,5),
+    "",
+    "六、回驗提醒",
+    calibrationHints(stats).map(h=>`- ${h}`).join("\n"),
+    "",
+    "提醒：少量案例只作為個人校準線索，不視為正式規則結論。"
+  ].join("\n");
+}
+async function copyCaseCalibrationSummary(){
+  const ok=await copyText(buildCaseCalibrationSummary(loadCases()));
+  toast(ok?"校準摘要已複製。":"瀏覽器限制複製，請改用匯出 CSV。");
+}
 function renderCases(){
   const box=document.getElementById("caseList"); if(!box)return;
   const allCases=loadCases();
@@ -1803,6 +1848,7 @@ function init(){
   document.getElementById("saveCase").onclick=saveCurrentCase;
   document.getElementById("updateCaseResult").onclick=updateCaseResult;
   document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
+  document.getElementById("copyCaseCalibrationSummary").onclick=copyCaseCalibrationSummary;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
@@ -1925,6 +1971,14 @@ function testCaseTrainingTask(){
   console.assert(ok,"V5: training task should guide the next case review action.");
   return ok;
 }
+function testCaseCalibrationSummary(){
+  const text=buildCaseCalibrationSummary([
+    {qtype:"合作",outcome:"有結果",afterAction:"有照做",verifiedSymbol:"玄武",riskReduced:"partial",calibration:"downgrade",feedback:{accuracy:"4",hitArea:"工作"}}
+  ]);
+  const ok=text.includes("案例校準摘要")&&text.includes("符號落點")&&text.includes("玄武 → 工作")&&text.includes("行動成效")&&text.includes("有照做 → 部分降低")&&text.includes("少量案例");
+  console.assert(ok,"V5: calibration summary should include progress, symbol hit and action effect.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1941,5 +1995,6 @@ function runV5DevTests(){
   testCaseReviewChecklist();
   testCaseReviewCsv();
   testCaseTrainingTask();
+  testCaseCalibrationSummary();
 }
 init();
