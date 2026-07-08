@@ -48,7 +48,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-20"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-21"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -117,6 +117,8 @@ assert(app.includes("testCaseTrainingTask"), "case training task dev test is mis
 assert(app.includes("testCaseCalibrationSummary"), "case calibration summary dev test is missing");
 assert(app.includes("testQuestionRewrite"), "question rewrite dev test is missing");
 assert(app.includes("testDecisionOptionDrafts"), "decision option draft dev test is missing");
+assert(app.includes("decisionOptionStyle"), "compare option style classifier is missing");
+assert(app.includes("testCompareOptionTextsDiffer"), "compare option text differentiation dev test is missing");
 assert(app.includes("reportSectionClass"), "report section layout classifier is missing");
 assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
 assert(style.includes(".report-section"), "structured report section styles are missing");

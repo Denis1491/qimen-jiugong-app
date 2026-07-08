@@ -681,7 +681,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-20").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-21").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1237,19 +1237,47 @@ function compareLeadAction(choice){
   if(/短訊息|簡短|先發|試探/.test(name))return `先以${choice.name}為主線小步試探。`;
   return `先以${choice.name}為主線小步推進。`;
 }
+function decisionOptionStyle(name){
+  const text=String(name||"");
+  if(/不動|暫停|先停|觀察|暫不|不要|放棄/.test(text))return "hold";
+  if(/明天|再說|等等|延後|晚點|改天/.test(text))return "delay";
+  if(/短訊息|簡短|先發|試探|小測試|小額|短約|小交付|交換資料|補資料|查證|確認|記錄|整理|問清楚/.test(text))return "probe";
+  if(/直接|主動|照原|投入|簽|合作|推進|安排|告白|購買|付款|承諾/.test(text))return "commit";
+  return "neutral";
+}
+function compareChoiceRiskHint(choice){
+  const profile=(choice?.report?.riskProfile||[])[0];
+  if(profile)return `${profile.type}：${profile.action}`;
+  const obstacle=compactText(choice?.report?.obstacle,120);
+  return obstacle||"主要看條件是否清楚、是否能保留退路。";
+}
+function compareDecisionLine(choice){
+  const d=choice.decision||{};
+  return `決策分 ${d.decisionScore}/100，可逆 ${d.reversibility}、成本 ${d.cost}、風險 ${d.risk}；鎖 ${choice.palace.key}${choice.palace.number}宮。`;
+}
 function compareActionText(choice){
-  const name=String(choice?.name||"");
-  if(/不動|暫停|先停|觀察/.test(name))return "這個選項的用法不是去推，而是暫時不出手：先觀察對方是否主動、整理自己的底線，等條件更清楚再決定要不要放大。";
-  if(/明天|再說|等等|延後/.test(name))return "這個選項的用法是延後決策：今天先不急回，把想說的話寫成草稿，明天再看情緒與條件是否更清楚。";
-  if(/短訊息|簡短|先發|試探/.test(name))return "這個選項只能小步試探：訊息要短、具體、不逼問立場，目的只拿一個明確回覆，不把關係一次推到高壓。";
-  return compactText(choice.report.actionPlan,260)||"先小步確認條件，不一次重押。";
+  const name=String(choice?.name||"這個選項");
+  const style=decisionOptionStyle(name);
+  const action={
+    hold:`「${name}」的用法不是推進，而是把決策暫停成一段觀察期：先整理底線、等待對方或現實條件自己露出訊號。`,
+    delay:`「${name}」的用法是延後承諾：先把要說的話、要付出的成本與可撤回條件寫清楚，隔天再確認情緒是否降下來。`,
+    probe:`「${name}」的用法是低成本測試：只做一個可撤回的小動作，目的拿到明確回覆、資料或條件，不把局面一次推滿。`,
+    commit:`「${name}」的用法是主動推進：可以開口或安排下一步，但要先限定範圍、期限與停損點，避免直接重押。`,
+    neutral:`「${name}」先當成中性方案處理：先確認一個最小條件，再決定要不要放大投入。`
+  }[style];
+  return `${action}${compareDecisionLine(choice)}此選項先看${compareChoiceRiskHint(choice)}`;
 }
 function compareRiskText(choice){
-  const name=String(choice?.name||"");
-  if(/不動|暫停|先停|觀察/.test(name))return "風險是拖延太久或錯過窗口；所以要設定觀察期限，不是無限期逃避。";
-  if(/明天|再說|等等|延後/.test(name))return "風險是把問題拖成冷處理；延後時要先想好明天要驗證哪一件事。";
-  if(/短訊息|簡短|先發|試探/.test(name))return "風險是訊息看似小，實際語氣變成逼問；避免長篇、質問、情緒字眼與連續追問。";
-  return compactText(choice.report.avoidPlan,260)||"先查證條件，保留退路。";
+  const name=String(choice?.name||"這個選項");
+  const style=decisionOptionStyle(name);
+  const risk={
+    hold:`「${name}」的風險是把觀察變成逃避，或拖過可處理窗口；要先設定回看時間。`,
+    delay:`「${name}」的風險是冷處理後問題變模糊；延後可以，但明天要驗證哪一件事要先寫下來。`,
+    probe:`「${name}」的風險是小測試變成逼問或連續追問；訊息、金額、承諾都要保持短、小、可退。`,
+    commit:`「${name}」的風險是推得太快，現實條件還沒落地就先承諾；先避開長約、大額、不可逆決定。`,
+    neutral:`「${name}」的風險在於條件不明卻被當成已確定；先避開一次定案。`
+  }[style];
+  return `${risk}${compareDecisionLine(choice)}避險重點：${compareChoiceRiskHint(choice)}`;
 }
 function makeSummary(p,s){const r=makeSoulReport(p,s); return {short:r.level,total:r.headline,action:String(r.actionPlan).replace(/\n/g," "),avoid:String(r.avoidPlan).replace(/\n/g," "),fengshui:r.fengShui.replace(/\n/g," ")}}
 function renderResult(){
@@ -2052,6 +2080,18 @@ function testDecisionOptionDrafts(){
   console.assert(ok,"V5: decision option drafts should create actionable compare options.");
   return ok;
 }
+function testCompareOptionTextsDiffer(){
+  const base={palace:{key:"坎",number:1},decision:{decisionScore:61,reversibility:60,cost:50,risk:42},report:{riskProfile:[{type:"條件未明",action:"先確認一個條件。"}],obstacle:"條件未明。"}};
+  const choices=[
+    {...base,name:"今天主動推進",palace:{key:"乾",number:6},decision:{decisionScore:55,reversibility:45,cost:70,risk:58}},
+    {...base,name:"先發簡短訊息",palace:{key:"巽",number:4},decision:{decisionScore:72,reversibility:85,cost:25,risk:30}},
+    {...base,name:"暫時不動觀察",palace:{key:"艮",number:8},decision:{decisionScore:64,reversibility:85,cost:20,risk:38}}
+  ];
+  const texts=choices.map(choice=>`${compareActionText(choice)}｜${compareRiskText(choice)}`);
+  const ok=new Set(texts).size===choices.length&&texts.every(text=>text.includes("決策分")&&text.includes("鎖 "));
+  console.assert(ok,"V5: compare option guidance should differ by option style and decision metrics.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -2071,5 +2111,6 @@ function runV5DevTests(){
   testCaseCalibrationSummary();
   testQuestionRewrite();
   testDecisionOptionDrafts();
+  testCompareOptionTextsDiffer();
 }
 init();
