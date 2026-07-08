@@ -688,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-23").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-24").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1745,9 +1745,17 @@ function caseMilestone(reviewed,total=reviewed){
   const label=reviewed>=100?"100 筆回驗完成，可開始做正式校準":reviewed>=30?"已過 30 筆回驗，可觀察題型穩定度":reviewed>=10?"已過 10 筆回驗，可開始看初步偏差":"先累積到 10 筆回驗，建立第一個校準樣本";
   return {next,done,percent,remaining,label,total};
 }
+function calibrationReadinessLabel(stats){
+  if(!stats.feedbackCount)return "待回填";
+  if(stats.completeCount>=100)return "可正式整理";
+  if(stats.completeCount>=30)return "可看穩定度";
+  if(stats.completeCount>=10)return "可看初步偏差";
+  return "先補完整";
+}
 function caseStatsFromCases(cases){
-  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,compareCaseCount:0,compareChosenCount:0,compareHitCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),byCompareChosen:new Map(),byCompareHit:new Map(),highTrace:new Map(),lowTrace:new Map()};
+  const stats={total:cases.length,feedbackCount:0,completeCount:0,incompleteReviewedCount:0,readinessPercent:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,compareCaseCount:0,compareChosenCount:0,compareHitCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),byCompareChosen:new Map(),byCompareHit:new Map(),highTrace:new Map(),lowTrace:new Map()};
   cases.forEach(c=>{
+    const completion=caseCompletion(c);
     const accuracy=caseAccuracyValue(c);
     const verifiedSymbol=(c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"").trim();
     const hitArea=c?.feedback?.hitArea||"";
@@ -1760,6 +1768,8 @@ function caseStatsFromCases(cases){
     const isCompare=Boolean(c?.decisionOptions||c?.compare);
     const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration)||Boolean(compareChosen)||Boolean(compareHit);
     if(hasFeedback)stats.feedbackCount+=1;
+    if(completion.done===completion.total)stats.completeCount+=1;
+    else if(hasFeedback)stats.incompleteReviewedCount+=1;
     if(isCompare)stats.compareCaseCount+=1;
     if(compareChosen){stats.compareChosenCount+=1; incrementBucket(stats.byCompareChosen,compareOptionLabel(compareChosen),accuracy);}
     if(compareHit){stats.compareHitCount+=1; incrementBucket(stats.byCompareHit,compareOptionLabel(compareHit),accuracy);}
@@ -1781,12 +1791,16 @@ function caseStatsFromCases(cases){
     }
   });
   stats.averageAccuracy=stats.accuracyCount?stats.accuracySum/stats.accuracyCount:null;
+  stats.readinessPercent=stats.feedbackCount?Math.round(stats.completeCount/stats.feedbackCount*100):0;
+  stats.readinessLabel=calibrationReadinessLabel(stats);
   stats.milestone=caseMilestone(stats.feedbackCount,stats.total);
   return stats;
 }
 function calibrationHints(stats){
   const hints=[];
   hints.push(`${stats.milestone.label}；下一個里程碑還差 ${stats.milestone.remaining} 筆。`);
+  if(stats.feedbackCount&&stats.completeCount<stats.feedbackCount)hints.push(`已有 ${stats.incompleteReviewedCount} 筆回驗未補完整；要做規則校準時，優先看完整案例，不只看已回填數。`);
+  if(stats.completeCount>0)hints.push(`目前有 ${stats.completeCount} 筆完整案例可進入校準觀察，可校準率 ${stats.readinessPercent}%。`);
   if(stats.total<10)hints.push("案例少於 10 筆，只能當作個人校盤紀錄，暫不視為規則結論。");
   if(stats.feedbackCount<3)hints.push("回填結果仍少，先補實際結果與準確度，再看哪類題型穩定。");
   if(stats.lowAccuracy>0)hints.push(`已有 ${stats.lowAccuracy} 筆 2 星以下，建議回看題目是否問得太大、鎖宮是否選錯，或行動建議是否太積極。`);
@@ -1809,6 +1823,7 @@ function calibrationAdvice(stats){
   if(count("只是延遲"))advice.push("把延遲象從「不成」改成「條件未實、等待補件或時間成熟」。");
   if(stats.lowAccuracy>0)advice.push("2 星以下案例先查問題是否太大、選宮是否不清、行動建議是否過度推進。");
   if(stats.actionEffectCount&&stats.riskReducedPositive<stats.riskReducedCount)advice.push("比較未降低風險的行動，找出哪些建議太抽象、太晚做或成本太高。");
+  if(stats.feedbackCount&&stats.readinessPercent<60)advice.push("先補齊案例欄位再改規則；可校準率低於 60% 時，樣本容易被缺漏資料帶偏。");
   if(!advice.length)advice.push("目前先繼續累積案例，滿 30 筆後再調整權重與文案。");
   return uniqueText(advice);
 }
@@ -1896,8 +1911,12 @@ function renderCaseStats(allCases=loadCases()){
   <div class="case-stats-grid">
     <div><span>案例總數</span><strong>${stats.total}</strong></div>
     <div><span>已回填</span><strong>${stats.feedbackCount}</strong></div>
+    <div><span>完整案例</span><strong>${stats.completeCount}</strong></div>
+    <div><span>可校準率</span><strong>${stats.readinessPercent}%</strong></div>
     <div><span>準確度</span><strong>${stats.accuracyCount}</strong></div>
     <div><span>風險降低</span><strong>${escapeHTML(riskRate)}</strong></div>
+    <div><span>校準狀態</span><strong>${escapeHTML(stats.readinessLabel)}</strong></div>
+    <div><span>待補完整</span><strong>${stats.incompleteReviewedCount}</strong></div>
   </div>
   <div class="case-stats-lines">
     <p><strong>題型分布</strong>${renderBucketList(rankedBuckets(stats.byQtype,5))}</p>
@@ -1927,6 +1946,9 @@ function buildCaseCalibrationSummary(cases=loadCases()){
     "一、進度",
     `案例總數：${stats.total}`,
     `已回填：${stats.feedbackCount}/100`,
+    `完整案例：${stats.completeCount}`,
+    `可校準率：${stats.readinessPercent}%`,
+    `校準狀態：${stats.readinessLabel}`,
     `平均準確度：${avg}`,
     `風險降低率：${riskRate}`,
     `下一步：${task.title}｜${task.detail}`,
@@ -2108,8 +2130,16 @@ function testCaseStatsAggregation(){
     {qtype:"感情",outcome:"有回覆",afterAction:"有照做",feedback:{accuracy:"4",hitArea:"感情",verifiedSymbol:"空亡應在延遲",riskReduced:"yes",calibration:"accurate"},scoreBreakdown:{ruleTrace:["生門 +10","六合 +8"]}},
     {qtype:"感情",outcome:"不準",feedback:{accuracy:"2",hitArea:"感情",verifiedSymbol:"驚門應在口舌",riskReduced:"no",deviationResult:"沒有照建議，口舌放大",calibration:"downgrade"},scoreBreakdown:{ruleTrace:["空亡 pending"]}}
   ]);
-  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.actionEffectCount===1&&stats.verifiedSymbolCount===2&&stats.symbolHitPairCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&stats.deviationCount===1&&stats.calibrationCount===2&&stats.byCalibration.get("需改成風險降級")?.count===1&&stats.milestone.next===10&&stats.milestone.remaining===8&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1&&stats.bySymbolHitArea.get("驚門應在口舌 → 感情")?.count===1&&stats.byActionEffect.get("有照做 → 有降低")?.count===1;
+  const ok=stats.total===2&&stats.feedbackCount===2&&stats.completeCount===1&&stats.incompleteReviewedCount===1&&stats.readinessPercent===50&&stats.accuracyCount===2&&stats.actionCount===1&&stats.actionEffectCount===1&&stats.verifiedSymbolCount===2&&stats.symbolHitPairCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&stats.deviationCount===1&&stats.calibrationCount===2&&stats.byCalibration.get("需改成風險降級")?.count===1&&stats.milestone.next===10&&stats.milestone.remaining===8&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1&&stats.bySymbolHitArea.get("驚門應在口舌 → 感情")?.count===1&&stats.byActionEffect.get("有照做 → 有降低")?.count===1;
   console.assert(ok,"V5: case stats aggregation should count feedback, accuracy, actions and qtype buckets.");
+  return ok;
+}
+function testCalibrationReadiness(){
+  const complete={outcome:"有結果",afterAction:"有照做",verifiedSymbol:"驚門",riskReduced:"yes",deviationResult:"無",calibration:"accurate",feedback:{accuracy:"4",hitArea:"工作"}};
+  const partial={outcome:"有結果",feedback:{accuracy:"4"}};
+  const stats=caseStatsFromCases([complete,partial]);
+  const ok=stats.completeCount===1&&stats.incompleteReviewedCount===1&&stats.readinessPercent===50&&stats.readinessLabel==="先補完整"&&buildCaseCalibrationSummary([complete,partial]).includes("可校準率：50%");
+  console.assert(ok,"V5: calibration readiness should separate complete cases from merely reviewed cases.");
   return ok;
 }
 function testMilestoneUsesFeedbackCount(){
@@ -2215,6 +2245,7 @@ function runV5DevTests(){
   testRiskProfileMapsSymbols();
   testCaseSaveAndReload();
   testCaseStatsAggregation();
+  testCalibrationReadiness();
   testMilestoneUsesFeedbackCount();
   testCaseCompletionMissingFields();
   testCompareCaseCompletionFields();

@@ -51,7 +51,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-23"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-24"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -104,6 +104,8 @@ assert(app.includes("copyActiveCaseReviewChecklist"), "case review checklist cop
 assert(app.includes("casesToReviewCsv"), "case review CSV exporter is missing");
 assert(app.includes("csvCell"), "CSV cell escaping helper is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");
+assert(app.includes("calibrationReadinessLabel"), "calibration readiness label helper is missing");
+assert(app.includes("readinessPercent"), "case readiness percent is missing");
 assert(app.includes("symbolHitKey"), "symbol-hit cross-analysis helper is missing");
 assert(app.includes("bySymbolHitArea"), "symbol-hit cross-analysis stats are missing");
 assert(app.includes("actionFollowedLabel"), "action-followed classifier is missing");
@@ -115,6 +117,7 @@ assert(app.includes("calibrationAdvice"), "case calibration advice helper is mis
 assert(app.includes("renderCaseStats"), "case stats renderer is missing");
 assert(app.includes("calibrationHints"), "case calibration hints are missing");
 assert(app.includes("testCaseStatsAggregation"), "case stats dev test is missing");
+assert(app.includes("testCalibrationReadiness"), "calibration readiness dev test is missing");
 assert(app.includes("testMilestoneUsesFeedbackCount"), "feedback-based milestone dev test is missing");
 assert(app.includes("testCaseCompletionMissingFields"), "case completion dev test is missing");
 assert(app.includes("testCompareCaseCompletionFields"), "compare case completion dev test is missing");
