@@ -38,9 +38,11 @@ assert(html.includes("optionAName") && html.includes("optionBName") && html.incl
 assert(html.includes("caseAfterAction"), "after-action feedback field is missing");
 assert(html.includes("caseVerifiedSymbol"), "verified symbol feedback field is missing");
 assert(html.includes("caseRiskReduced"), "risk reduction feedback field is missing");
+assert(html.includes("caseDeviationResult"), "deviation result feedback field is missing");
+assert(html.includes("caseCalibration"), "case calibration feedback field is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-7"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-8"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -68,7 +70,10 @@ assert(app.includes("reportHTML"), "structured report renderer is missing");
 assert(app.includes("afterAction"), "case after-action feedback is missing");
 assert(app.includes("verifiedSymbol"), "case verified symbol feedback is missing");
 assert(app.includes("riskReduced"), "case risk reduction feedback is missing");
+assert(app.includes("deviationResult"), "case deviation result feedback is missing");
+assert(app.includes("calibration"), "case calibration feedback is missing");
 assert(app.includes("riskReducedLabel"), "risk reduction label helper is missing");
+assert(app.includes("calibrationLabel"), "calibration label helper is missing");
 assert(app.includes("caseMilestone"), "100-case milestone helper is missing");
 assert(app.includes("caseProgressHTML"), "100-case progress renderer is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");

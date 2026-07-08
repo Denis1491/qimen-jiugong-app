@@ -7,8 +7,8 @@
   <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
   <meta name="theme-color" content="#2f332b">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.0-decision-7">
-  <link rel="stylesheet" href="style.css?v=5.0-decision-7">
+  <link rel="manifest" href="manifest.webmanifest?v=5.0-decision-8">
+  <link rel="stylesheet" href="style.css?v=5.0-decision-8">
 </head>
 <body>
 <div class="shell">
@@ -176,15 +176,17 @@
       <div class="field"><label for="caseAfterAction">是否照建議做</label><input id="caseAfterAction" placeholder="例如：有照做，先傳短訊息；或沒有照做"></div>
       <div class="field"><label for="caseVerifiedSymbol">哪個象應驗</label><input id="caseVerifiedSymbol" placeholder="例如：驚門應在口舌；空亡應在延遲"></div>
       <div class="field"><label for="caseRiskReduced">風險是否降低</label><select id="caseRiskReduced"><option value="">未回填</option><option value="yes">有降低</option><option value="partial">部分降低</option><option value="no">沒有降低</option><option value="unknown">看不出來</option></select></div>
+      <div class="field"><label for="caseDeviationResult">偏離建議後結果</label><input id="caseDeviationResult" placeholder="例如：沒有照做，結果口舌放大；或仍然沒事"></div>
+      <div class="field"><label for="caseCalibration">校準結論</label><select id="caseCalibration"><option value="">未回填</option><option value="accurate">判斷準</option><option value="delayed">只是延遲</option><option value="wrong-area">應事不同</option><option value="too-strong">說得太死</option><option value="downgrade">需改成風險降級</option><option value="unclear">仍待觀察</option></select></div>
     </div>
     <div class="case-stats" id="caseStats"></div>
     <div class="case-list" id="caseList"></div>
   </section>
   </section>
 </div>
-<script src="engine.js?v=5.0-decision-7" defer></script>
-<script src="qimen_soul_copy_bank.js?v=5.0-decision-7" defer></script>
-<script src="app.js?v=5.0-decision-7" defer></script>
+<script src="engine.js?v=5.0-decision-8" defer></script>
+<script src="qimen_soul_copy_bank.js?v=5.0-decision-8" defer></script>
+<script src="app.js?v=5.0-decision-8" defer></script>
 </body>
 </html>
 
