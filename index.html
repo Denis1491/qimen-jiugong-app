@@ -15,6 +15,9 @@
     <div class="hero-main card">
       <h1>九宮奇門鎖單宮</h1>
       <div class="btn-row">
+        <button class="btn btn-primary nav-btn" data-view="ask" type="button">問事</button>
+        <button class="btn btn-ghost nav-btn" data-view="chart" type="button">看盤</button>
+        <button class="btn btn-ghost nav-btn" data-view="case" type="button">案例</button>
         <button class="btn btn-soft" id="quickNow">使用現在時間</button>
         <button class="btn btn-ghost" id="quickExample">範例</button>
       </div>
@@ -27,10 +30,14 @@
     </aside>
   </header>
 
-  <section class="panel card controls">
+  <section class="view active" id="viewAsk" data-view-panel="ask">
+  <section class="panel card controls ask-card">
     <div class="section-title">
-      <div><h2>起盤</h2></div>
+      <div><h2>問事</h2><small>填問題、選數字、選時間。</small></div>
     </div>
+    <div class="field question-field"><label for="questionText">想問的事情</label><textarea id="questionText" placeholder="例如：這次合作可不可以推？"></textarea></div>
+    <div class="section-title compact-title"><div><h2>選數字</h2><small>選 1-9 即可。</small></div></div>
+    <div class="num-pad" id="numPad"></div>
     <div class="form-grid primary-form">
       <div class="field"><label for="dt">起盤時間</label><input type="datetime-local" id="dt"></div>
       <div class="field"><label for="qtype">用途</label><select id="qtype"><option>今日運勢</option><option>工作</option><option>財運</option><option>感情</option><option>合作</option><option>健康</option><option>風水</option><option>決策</option></select></div>
@@ -46,10 +53,19 @@
     </details>
     <div class="note" id="autoNote">尚未排盤。</div>
   </section>
+  </section>
 
+  <section class="view" id="viewChart" data-view-panel="chart">
+  <section class="panel card step-actions">
+    <div class="section-title"><div><h2>盤面與分析</h2><small>完整九宮、鎖定宮位、記憶報告。</small></div></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost nav-btn" data-view="ask" type="button">返回問事</button>
+      <button class="btn btn-primary nav-btn" data-view="case" type="button">前往儲存</button>
+      <button class="btn btn-ghost" id="printBtn">列印/PDF</button>
+    </div>
+  </section>
   <section class="panel card controls">
-<div class="section-title"><div><h2>選數字</h2><small>選 1-9 即可。</small></div></div>
-    <div class="num-pad" id="numPad"></div>
+    <div class="section-title"><div><h2>所選宮位</h2><small>下方只顯示你選到的宮。</small></div></div>
     <div class="locked-palace-panel" id="lockedPalacePanel">
       <div class="locked-empty">請先起盤，再選一個數字。</div>
     </div>
@@ -91,8 +107,18 @@
     </div>
     <div class="report" id="reportBox">尚未產生報告。</div>
   </section>
+  </section>
 
-  <section class="panel card" style="margin-top:18px">
+  <section class="view" id="viewCase" data-view-panel="case">
+  <section class="panel card step-actions">
+    <div class="section-title"><div><h2>儲存盤面</h2><small>方便日後對照實際結果。</small></div></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost nav-btn" data-view="ask" type="button">再問一次</button>
+      <button class="btn btn-ghost nav-btn" data-view="chart" type="button">返回看盤</button>
+    </div>
+  </section>
+
+  <section class="panel card">
     <div class="section-title">
       <div><h2>案例庫</h2><small>儲存、回看、校盤。</small></div>
       <div class="btn-row">
@@ -107,6 +133,7 @@
       <div class="field"><label for="caseSearch">搜尋</label><input id="caseSearch" placeholder="搜尋名稱、用途、宮位、結果"></div>
     </div>
     <div class="case-list" id="caseList"></div>
+  </section>
   </section>
 </div>
 <script src="engine.js" defer></script>

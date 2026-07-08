@@ -20,6 +20,7 @@
     .metric{border:1px solid rgba(223,205,183,.9);background:#fff;border-radius:12px;padding:10px}
     .metric .label{font-size:.78rem;color:var(--muted);font-weight:700}.metric .value{font-size:1.08rem;font-weight:900;margin-top:2px;color:#5d2d14}
     .metric-wide{grid-column:1/-1}
+    .view{display:none}.view.active{display:block}.step-actions{margin-bottom:14px}.ask-card{max-width:940px;margin-left:auto;margin-right:auto}.question-field{margin-bottom:14px}.question-field textarea{min-height:128px}.compact-title{margin-top:12px}.nav-btn.active{background:#29241d;color:#fff;border-color:#29241d}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
     .panel{padding:18px;margin-bottom:14px}.section-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
     .section-title h2{font-size:1.18rem;margin:0}.section-title small{color:var(--muted)}

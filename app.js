@@ -96,6 +96,7 @@ const GOD_ADVICE = {
 let chart = null;
 let selectedNum = null;
 let reportMode = "simple";
+let currentView = "ask";
 
 // ===== 工具函數 =====
 function pad(n){return String(n).padStart(2,"0")}
@@ -103,6 +104,7 @@ function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function unique(arr){return [...new Set(arr.filter(Boolean))]}
 function escapeHTML(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]))}
 function parseDT(){const v=document.getElementById("dt").value;if(!v)return null;const [date,time]=v.split("T");const [y,m,d]=date.split("-").map(Number);const [hh,mm]=time.split(":").map(Number);return {y,m,d,hh,mm}}
+function questionText(){return (document.getElementById("questionText")?.value||"").trim()}
 function fmtDT(p){return `${p.y}-${pad(p.m)}-${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}`}
 function jdn(y,m,d){let a=Math.floor((14-m)/12);let y2=y+4800-a;let m2=m+12*a-3;return d+Math.floor((153*m2+2)/5)+365*y2+Math.floor(y2/4)-Math.floor(y2/100)+Math.floor(y2/400)-32045}
 function dateAddDays(p,delta){const dt=new Date(p.y,p.m-1,p.d+delta,p.hh||0,p.mm||0);return {y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate(),hh:dt.getHours(),mm:dt.getMinutes()}}
@@ -155,6 +157,7 @@ function yinpanJu(meta){const yNo=BRANCH_NO[meta.yearBranch], mNo=meta.lunar.mon
 function buildChart(){
   try{
     const p=parseDT(); if(!p){alert("請輸入起盤時間");return}
+    if(!selectedNum){alert("請先選 1-9 一個數字");return false}
     const ziChange=document.getElementById("ziChange").value==="true";
     const yGZ=yearGZ(p); const yStem=stemOf(yGZ), yBranch=branchOf(yGZ);
     const mInfo=monthInfo(p,yStem); const dIdx=dayIndex(p,ziChange); const dGZ=gzFromIndex(dIdx); const hGZ=hourGZ(p,stemOf(dGZ));
@@ -177,12 +180,13 @@ function buildChart(){
       return {key,number:PALACE_NUM[key],god:godMap[key]||"",star:starMap[key]||"",door,top,bottom,flags:unique(flags)};
     });
     chart={
-      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange},
+      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, question:questionText(), settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange},
       meta:{solar:fmtDT(p),lunar:lunarText(lunar),yearGZ:yGZ,yearStem:yStem,yearBranch:yBranch,monthStem:mInfo.stem,monthBranch:mInfo.branch,dayStem:stemOf(dGZ),dayBranch:branchOf(dGZ),hourStem:stemOf(hGZ),hourBranch:branchOf(hGZ),monthGZ:mInfo.stem+mInfo.branch,dayGZ:dGZ,hourGZ:hGZ,ju:`陰${CN_NUM[ju.num]}局`,juNum:ju.num,juFormula:ju.formula,xunshou:`${xun.start}旬`,futou:xun.hidden,kongwang:xun.kong,yima,zhifu,zhishi,xunPalace,timePalace,starOffset,doorOffset:dOff},
       palaces
     };
     renderAll(); setNote(`已排：${yGZ}年 ${mInfo.stem+mInfo.branch}月 ${dGZ}日 ${hGZ}時；農曆${lunarText(lunar)}；${chart.meta.ju}；旬首${xun.start}、符頭${xun.hidden}、空亡${xun.kong}、驛馬${yima}。局數公式：${ju.formula}。`);
-  }catch(err){alert(err.message||err);}
+    return true;
+  }catch(err){alert(err.message||err); return false;}
 }
 
 // ===== 分數 =====
@@ -236,6 +240,13 @@ function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filt
 function renderAll(){renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases();}
 function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途待確認`}
 function setNote(t){document.getElementById("autoNote").textContent=t}
+function showView(view){
+  currentView=view||"ask";
+  document.querySelectorAll("[data-view-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.viewPanel===currentView));
+  document.querySelectorAll(".nav-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.view===currentView));
+  if(currentView==="chart" && !chart)toast("尚未排盤，請先完成問事。");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function renderNums(){const pad=document.getElementById("numPad"); if(!pad.dataset.ready){pad.innerHTML=""; [1,2,3,4,5,6,7,8,9].forEach(n=>{const b=document.createElement("button"); b.className="num-btn"; b.textContent=String(n); b.onclick=()=>{selectedNum=n; renderAll()}; pad.appendChild(b)}); pad.dataset.ready="1"} Array.from(pad.children).forEach((b,i)=>{const n=i+1; b.classList.toggle("active",selectedNum===n)})}
 function renderMeta(){const box=document.getElementById("metaGrid"); if(!chart){box.innerHTML="";return} const m=chart.meta; const pairs=[["西元",m.solar],["農曆",m.lunar],["四柱",`${m.yearGZ}　${m.monthGZ}　${m.dayGZ}　${m.hourGZ}`],["起局",`${m.ju}｜陰盤`],["旬首",m.xunshou],["符頭",m.futou],["空亡",m.kongwang],["驛馬",m.yima],["值符",m.zhifu],["值使",m.zhishi],["局數公式",m.juFormula],["門法",document.getElementById("doorMode").selectedOptions[0].textContent]]; box.innerHTML=pairs.map(([a,b])=>`<div class="meta"><span>${a}</span><strong>${escapeHTML(b)}</strong></div>`).join(""); document.getElementById("chartBadge").textContent=`${m.ju}・${m.zhifu}・${m.zhishi}`; const ov=overallScore(); document.getElementById("metricOverall").textContent=`${ov}/100`;}
 function stemSpan(st,pal){const tags=[tagFor("stem",st)]; if(STEM_TOMB[st]===pal)tags.push(`<span class="small-tag tag-risk">墓</span>`); if(STEM_PUNISH[st]===pal)tags.push(`<span class="small-tag tag-risk">刑</span>`); const cls=classByScore("stem",st); return `<span class="${cls}">${st}</span>${tags.join("")}`}
@@ -303,8 +314,8 @@ function makeSummary(p,s){
 }
 function renderReport(){document.getElementById("reportBox").textContent=makeReport(reportMode)}
 function makeReport(mode=reportMode){
-  if(!chart)return "尚未產生報告。"; const m=chart.meta; let out=[]; out.push(`九宮奇門鎖單宮報告`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
-  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮簡明報告`,`時間：${m.solar}`,`用途：${chart.settings.qtype}`,`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`,s.denied?`判斷：直接否定`:`分數：${s.score}/100｜${s.grade.name}`,`總斷：${summary.total}`,`行動建議：${summary.action}`,`風水改善：${summary.fengshui}`].join("\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`總斷：${summary.total}`); out.push(`行動建議：${summary.action}`); out.push(`風水改善：${summary.fengshui}`); out.push(""); out.push(s.denied?`否定依據：`:`加分依據：`); s.reasons.forEach(r=>out.push(`- ${r.label} ${r.value>0?"+":""}${r.value}：${r.text}`));}
+  if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門鎖單宮報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
+  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮簡明報告`,question?`問事：${question}`:"",`時間：${m.solar}`,`用途：${chart.settings.qtype}`,`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`,s.denied?`判斷：直接否定`:`分數：${s.score}/100｜${s.grade.name}`,`總斷：${summary.total}`,`行動建議：${summary.action}`,`風水改善：${summary.fengshui}`].filter(Boolean).join("\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`總斷：${summary.total}`); out.push(`行動建議：${summary.action}`); out.push(`風水改善：${summary.fengshui}`); out.push(""); out.push(s.denied?`否定依據：`:`加分依據：`); s.reasons.forEach(r=>out.push(`- ${r.label} ${r.value>0?"+":""}${r.value}：${r.text}`));}
   else out.push("\n尚未選 1-9 鎖單宮。");
   return out.join("\n")
 }
@@ -325,10 +336,11 @@ async function copyText(text){
   finally{document.querySelectorAll("textarea[readonly][style*='-9999px']").forEach(el=>el.remove())}
 }
 function toast(msg){setNote(msg)}
-function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), chart, selectedNum}}
+function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), chart, selectedNum}}
 function restoreChartPayload(payload){
   if(!payload||!payload.chart||!Array.isArray(payload.chart.palaces))throw new Error("JSON 不是可匯入的盤面。");
   chart=payload.chart; selectedNum=payload.selectedNum?Number(payload.selectedNum):null;
+  if(payload.question||chart.question)document.getElementById("questionText").value=payload.question||chart.question;
   if(chart.settings){
     if(chart.settings.qtype)document.getElementById("qtype").value=chart.settings.qtype;
     if(chart.settings.doorMode)document.getElementById("doorMode").value=chart.settings.doorMode;
@@ -338,7 +350,7 @@ function restoreChartPayload(payload){
     const m=chart.meta.solar.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})/);
     if(m)setDateInput({y:+m[1],m:+m[2],d:+m[3],hh:+m[4],mm:+m[5]});
   }
-  renderAll(); toast("已匯入盤面。");
+  renderAll(); showView("chart"); toast("已匯入盤面。");
 }
 function loadCases(){
   try{const raw=localStorage.getItem(CASE_STORAGE_KEY); return raw?JSON.parse(raw):[]}catch(e){return []}
@@ -353,6 +365,7 @@ function currentCase(){
     title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,
     outcome:document.getElementById("caseOutcome").value.trim(),
     qtype:chart.settings.qtype,
+    question:chart.question||questionText(),
     selectedNum,
     lockedPalace:p?`${p.key}${p.number}`:"",
     result:s.denied?"直接否定":`${s.score}/100 ${s.grade.name}`,
@@ -376,6 +389,7 @@ function renderCases(){
     <div>
       <h3>${escapeHTML(c.title)}</h3>
       <small>${escapeHTML(c.qtype)}｜${escapeHTML(c.lockedPalace)}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
+      ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
       <div class="case-tags"><span class="tab">${escapeHTML(c.selectedNum)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span></div>
     </div>
     <div class="case-actions">
@@ -409,9 +423,11 @@ function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}
 function init(){
   const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
   renderAll();
-  document.getElementById("quickExample").onclick=()=>{setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; buildChart(); selectedNum=7; renderAll();};
+  showView("ask");
+  document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.view)));
+  document.getElementById("quickExample").onclick=()=>{setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
   document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
-  document.getElementById("buildBtn").onclick=buildChart;
+  document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
   document.getElementById("printBtn").onclick=()=>window.print();
   document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").textContent=text; toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
   document.getElementById("downloadTxt").onclick=()=>download("九宮奇門鎖單宮報告.txt",makeReport());
