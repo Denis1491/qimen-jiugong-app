@@ -1436,6 +1436,40 @@ function updateCaseResult(){
   cases[idx]={...cases[idx],title:document.getElementById("caseTitle").value.trim()||cases[idx].title,outcome:feedback.outcome,afterAction:feedback.afterAction,verifiedSymbol:feedback.verifiedSymbol,riskReduced:feedback.riskReduced,deviationResult:feedback.deviationResult,calibration:feedback.calibration,userFeedback:feedback,feedback,updatedAt:new Date().toISOString()};
   saveCases(cases); renderCases(); toast("回驗結果已更新。");
 }
+function buildCaseReviewChecklist(c){
+  const completion=caseCompletion(c);
+  const fb=c?.feedback||{};
+  const lines=[
+    "九宮奇門回驗清單",
+    `案例：${c?.title||"未命名案例"}`,
+    `題型：${c?.qtype||"待確認"}`,
+    `問事：${c?.question||"未記錄"}`,
+    `原判斷：${c?.summary||c?.result||"未記錄"}`,
+    `回驗完整度：${completion.done}/${completion.total}`,
+    "",
+    "請補齊：",
+    ...(completion.missing.length?completion.missing.map(x=>`- ${x}`):["- 已完整，下一步可觀察同類案例是否重複。"]),
+    "",
+    "回填欄位：",
+    `實際結果：${fb.outcome||c?.outcome||""}`,
+    `準確度：${fb.accuracy||""}`,
+    `應事分類：${fb.hitArea||""}`,
+    `是否照建議做：${fb.afterAction||c?.afterAction||""}`,
+    `哪個象應驗：${fb.verifiedSymbol||c?.verifiedSymbol||""}`,
+    `風險是否降低：${riskReducedLabel(fb.riskReduced||c?.riskReduced)}`,
+    `偏離建議後結果：${fb.deviationResult||c?.deviationResult||""}`,
+    `校準結論：${calibrationLabel(fb.calibration||c?.calibration)}`,
+    `備註：${fb.notes||""}`
+  ];
+  return lines.join("\n");
+}
+async function copyActiveCaseReviewChecklist(){
+  if(!activeCaseId){toast("請先從案例庫按「回看」，再複製回驗清單。"); return}
+  const item=loadCases().find(c=>c.id===activeCaseId);
+  if(!item){toast("找不到目前回看的案例。"); return}
+  const ok=await copyText(buildCaseReviewChecklist(item));
+  toast(ok?"回驗清單已複製。":"瀏覽器限制複製，請改用匯出案例。");
+}
 function caseAccuracyValue(c){
   const value=Number(c?.feedback?.accuracy||c?.userFeedback?.accuracy||c?.accuracy||"");
   return Number.isFinite(value)&&value>=1&&value<=5?value:null;
@@ -1647,6 +1681,7 @@ function init(){
   document.getElementById("importJsonInput").onchange=e=>{importJsonFile(e.target.files[0]); e.target.value=""};
   document.getElementById("saveCase").onclick=saveCurrentCase;
   document.getElementById("updateCaseResult").onclick=updateCaseResult;
+  document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
   document.getElementById("caseSearch").addEventListener("input",renderCases);
@@ -1739,6 +1774,12 @@ function testCaseReviewFilter(){
   console.assert(ok,"V5: review filters should separate unreviewed, incomplete and complete cases.");
   return ok;
 }
+function testCaseReviewChecklist(){
+  const text=buildCaseReviewChecklist({title:"測試案例",qtype:"工作",question:"要不要談合作",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作"}});
+  const ok=text.includes("九宮奇門回驗清單")&&text.includes("回驗完整度")&&text.includes("請補齊")&&text.includes("哪個象應驗");
+  console.assert(ok,"V5: review checklist should include missing fields and review prompts.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1751,5 +1792,6 @@ function runV5DevTests(){
   testMilestoneUsesFeedbackCount();
   testCaseCompletionMissingFields();
   testCaseReviewFilter();
+  testCaseReviewChecklist();
 }
 init();
