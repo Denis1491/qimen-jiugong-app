@@ -1455,6 +1455,15 @@ function rankedBuckets(map,limit=4){
 function riskReducedLabel(value){
   return {yes:"有降低",partial:"部分降低",no:"沒有降低",unknown:"看不出來"}[value]||"未回填";
 }
+function caseMilestone(total){
+  const milestones=[10,30,100];
+  const next=milestones.find(n=>total<n)||100;
+  const done=Math.min(total,100);
+  const percent=Math.min(100,Math.round(done/100*100));
+  const remaining=Math.max(0,next-total);
+  const label=total>=100?"100 案例完成，可開始做正式校準":total>=30?"已過 30 筆，可觀察題型穩定度":total>=10?"已過 10 筆，可開始看初步偏差":"先累積到 10 筆，建立第一個校準樣本";
+  return {next,done,percent,remaining,label};
+}
 function caseStatsFromCases(cases){
   const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),highTrace:new Map(),lowTrace:new Map()};
   cases.forEach(c=>{
@@ -1477,10 +1486,12 @@ function caseStatsFromCases(cases){
     }
   });
   stats.averageAccuracy=stats.accuracyCount?stats.accuracySum/stats.accuracyCount:null;
+  stats.milestone=caseMilestone(stats.total);
   return stats;
 }
 function calibrationHints(stats){
   const hints=[];
+  hints.push(`${stats.milestone.label}；下一個里程碑還差 ${stats.milestone.remaining} 筆。`);
   if(stats.total<10)hints.push("案例少於 10 筆，只能當作個人校盤紀錄，暫不視為規則結論。");
   if(stats.feedbackCount<3)hints.push("回填結果仍少，先補實際結果與準確度，再看哪類題型穩定。");
   if(stats.lowAccuracy>0)hints.push(`已有 ${stats.lowAccuracy} 筆 2 星以下，建議回看題目是否問得太大、鎖宮是否選錯，或行動建議是否太積極。`);
@@ -1497,21 +1508,29 @@ function renderBucketList(items){
     return `<span>${escapeHTML(item.name)} ${item.count} 筆${escapeHTML(avg)}</span>`;
   }).join("");
 }
+function caseProgressHTML(milestone){
+  return `<div class="case-progress">
+    <div><strong>100 案例進度</strong><span>${milestone.done}/100｜${escapeHTML(milestone.label)}</span></div>
+    <div class="case-progress-bar"><span style="width:${milestone.percent}%"></span></div>
+  </div>`;
+}
 function renderCaseStats(allCases=loadCases()){
   const box=document.getElementById("caseStats"); if(!box)return;
   const stats=caseStatsFromCases(allCases);
   if(!stats.total){
-    box.innerHTML=`<div class="case-empty">尚無回驗資料。儲存案例後，這裡會開始累積題型、準確度與行動回饋。</div>`;
+    box.innerHTML=`${caseProgressHTML(stats.milestone)}<div class="case-empty">尚無回驗資料。先儲存第一筆案例，開始累積題型、準確度與行動回饋。</div>`;
     return;
   }
   const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
   const riskRate=stats.riskReducedCount?`${Math.round(stats.riskReducedPositive/stats.riskReducedCount*100)}%`:"待回填";
   const topHigh=rankedBuckets(stats.highTrace,3).map(x=>x.name).join("、")||"待累積";
   const topLow=rankedBuckets(stats.lowTrace,3).map(x=>x.name).join("、")||"待累積";
+  const milestone=stats.milestone;
   box.innerHTML=`<div class="case-stats-head">
     <div><strong>回驗校準</strong><small>用案例慢慢修正判斷，不把少量資料當定論。</small></div>
     <div class="case-stats-score">${escapeHTML(avg)}</div>
   </div>
+  ${caseProgressHTML(milestone)}
   <div class="case-stats-grid">
     <div><span>案例總數</span><strong>${stats.total}</strong></div>
     <div><span>已回填</span><strong>${stats.feedbackCount}</strong></div>
@@ -1645,7 +1664,7 @@ function testCaseStatsAggregation(){
     {qtype:"感情",outcome:"有回覆",afterAction:"有照做",feedback:{accuracy:"4",hitArea:"感情",verifiedSymbol:"空亡應在延遲",riskReduced:"yes"},scoreBreakdown:{ruleTrace:["生門 +10","六合 +8"]}},
     {qtype:"感情",outcome:"不準",feedback:{accuracy:"2",hitArea:"感情",verifiedSymbol:"驚門應在口舌",riskReduced:"no"},scoreBreakdown:{ruleTrace:["空亡 pending"]}}
   ]);
-  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.verifiedSymbolCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1;
+  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.verifiedSymbolCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&stats.milestone.next===10&&stats.milestone.remaining===8&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1;
   console.assert(ok,"V5: case stats aggregation should count feedback, accuracy, actions and qtype buckets.");
   return ok;
 }

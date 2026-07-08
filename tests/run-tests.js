@@ -40,7 +40,7 @@ assert(html.includes("caseVerifiedSymbol"), "verified symbol feedback field is m
 assert(html.includes("caseRiskReduced"), "risk reduction feedback field is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-4"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-6"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -69,6 +69,8 @@ assert(app.includes("afterAction"), "case after-action feedback is missing");
 assert(app.includes("verifiedSymbol"), "case verified symbol feedback is missing");
 assert(app.includes("riskReduced"), "case risk reduction feedback is missing");
 assert(app.includes("riskReducedLabel"), "risk reduction label helper is missing");
+assert(app.includes("caseMilestone"), "100-case milestone helper is missing");
+assert(app.includes("caseProgressHTML"), "100-case progress renderer is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");
 assert(app.includes("renderCaseStats"), "case stats renderer is missing");
 assert(app.includes("calibrationHints"), "case calibration hints are missing");
@@ -79,6 +81,7 @@ assert(style.includes(".report-section"), "structured report section styles are 
 assert(style.includes(".report-list"), "report list styles are missing");
 assert(style.includes(".report-highlight"), "report highlight styles are missing");
 assert(style.includes(".case-stats"), "case stats styles are missing");
+assert(style.includes(".case-progress"), "100-case progress styles are missing");
 assert(copyBank.includes("window.QIMEN_COPY_BANK"), "copy bank must expose window.QIMEN_COPY_BANK");
 assert(engine.includes("QIMEN_RULE_VERSION"), "engine.js must expose rule version");
 assert(engine.includes("QIMEN_RULE_FILES"), "engine.js must expose rule file index");
