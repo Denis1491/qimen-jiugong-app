@@ -42,9 +42,10 @@ assert(html.includes("caseDeviationResult"), "deviation result feedback field is
 assert(html.includes("caseCalibration"), "case calibration feedback field is missing");
 assert(html.includes("caseReviewFilter"), "case review quality filter is missing");
 assert(html.includes("copyCaseReviewChecklist"), "case review checklist copy button is missing");
+assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-11"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-12"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -82,6 +83,8 @@ assert(app.includes("caseCompletion"), "case completion helper is missing");
 assert(app.includes("caseMatchesReviewFilter"), "case review filter helper is missing");
 assert(app.includes("buildCaseReviewChecklist"), "case review checklist builder is missing");
 assert(app.includes("copyActiveCaseReviewChecklist"), "case review checklist copy handler is missing");
+assert(app.includes("casesToReviewCsv"), "case review CSV exporter is missing");
+assert(app.includes("csvCell"), "CSV cell escaping helper is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");
 assert(app.includes("renderCaseStats"), "case stats renderer is missing");
 assert(app.includes("calibrationHints"), "case calibration hints are missing");
@@ -90,6 +93,7 @@ assert(app.includes("testMilestoneUsesFeedbackCount"), "feedback-based milestone
 assert(app.includes("testCaseCompletionMissingFields"), "case completion dev test is missing");
 assert(app.includes("testCaseReviewFilter"), "case review filter dev test is missing");
 assert(app.includes("testCaseReviewChecklist"), "case review checklist dev test is missing");
+assert(app.includes("testCaseReviewCsv"), "case review CSV dev test is missing");
 assert(app.includes("reportSectionClass"), "report section layout classifier is missing");
 assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
 assert(style.includes(".report-section"), "structured report section styles are missing");

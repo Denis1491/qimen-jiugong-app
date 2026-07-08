@@ -542,6 +542,38 @@ function reportHTML(text){
 function renderReport(){document.getElementById("reportBox").innerHTML=reportHTML(makeReport(reportMode))}
 // ===== 匯入、匯出與案例庫 =====
 function download(name,text,type="text/plain;charset=utf-8"){const blob=new Blob([text],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function csvCell(value){
+  const text=String(value??"").replace(/\r?\n/g," ");
+  return /[",\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
+}
+function casesToReviewCsv(cases){
+  const headers=["savedAt","title","qtype","decisionIntent","question","selectedNum","lockedPalace","result","accuracy","hitArea","afterAction","verifiedSymbol","riskReduced","deviationResult","calibration","completion","missing","summary"];
+  const rows=(cases||[]).map(c=>{
+    const fb=c.feedback||{};
+    const completion=caseCompletion(c);
+    return [
+      c.savedAt||"",
+      c.title||"",
+      c.qtype||"",
+      c.problemDiagnosis?.decisionIntent||"",
+      c.question||"",
+      c.selectedNum||"",
+      c.lockedPalace||"",
+      c.result||"",
+      fb.accuracy||"",
+      fb.hitArea||"",
+      fb.afterAction||c.afterAction||"",
+      fb.verifiedSymbol||c.verifiedSymbol||"",
+      riskReducedLabel(fb.riskReduced||c.riskReduced),
+      fb.deviationResult||c.deviationResult||"",
+      calibrationLabel(fb.calibration||c.calibration),
+      `${completion.done}/${completion.total}`,
+      completion.missing.join("、"),
+      c.summary||""
+    ];
+  });
+  return [headers,...rows].map(row=>row.map(csvCell).join(",")).join("\n");
+}
 async function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     try{await navigator.clipboard.writeText(text); return true}catch(e){}
@@ -609,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-12").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1683,6 +1715,7 @@ function init(){
   document.getElementById("updateCaseResult").onclick=updateCaseResult;
   document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
+  document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
   document.getElementById("caseSearch").addEventListener("input",renderCases);
   document.getElementById("caseReviewFilter").addEventListener("change",renderCases);
@@ -1780,6 +1813,12 @@ function testCaseReviewChecklist(){
   console.assert(ok,"V5: review checklist should include missing fields and review prompts.");
   return ok;
 }
+function testCaseReviewCsv(){
+  const text=casesToReviewCsv([{savedAt:"2026-07-08",title:"測試,案例",qtype:"工作",outcome:"有結果",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作",verifiedSymbol:"驚門",riskReduced:"partial",calibration:"downgrade"}}]);
+  const ok=text.includes("completion")&&text.includes('"測試,案例"')&&text.includes("需改成風險降級")&&text.includes("部分降低");
+  console.assert(ok,"V5: review CSV should export analysis-ready case fields.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1793,5 +1832,6 @@ function runV5DevTests(){
   testCaseCompletionMissingFields();
   testCaseReviewFilter();
   testCaseReviewChecklist();
+  testCaseReviewCsv();
 }
 init();
