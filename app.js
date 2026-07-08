@@ -688,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-26").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-27").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1685,6 +1685,58 @@ async function copyActiveCaseReviewChecklist(){
   const ok=await copyText(buildCaseReviewChecklist(item));
   toast(ok?"回驗清單已複製。":"瀏覽器限制複製，請改用匯出案例。");
 }
+function caseReviewFilterLabel(value){
+  return {all:"全部案例",unreviewed:"待回填結果",incomplete:"待補完整",complete:"已完整","low-accuracy":"低分案例","compare-incomplete":"比較題待補","compare-chosen-mismatch":"推薦未採用","compare-hit-mismatch":"推薦未應驗"}[value]||"全部案例";
+}
+function caseReviewSearchText(c){
+  return [c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.compareChosen,c.feedback?.compareChosen,c.compareHit,c.feedback?.compareHit,c.compareNote,c.feedback?.compareNote,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase();
+}
+function filteredReviewCases(allCases=loadCases()){
+  const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
+  const reviewFilter=document.getElementById("caseReviewFilter")?.value||"all";
+  return allCases
+    .filter(c=>!query||caseReviewSearchText(c).includes(query))
+    .filter(c=>caseMatchesReviewFilter(c,reviewFilter));
+}
+function caseReviewDigestLine(c,index){
+  const completion=caseCompletion(c);
+  const fb=c?.feedback||{};
+  const accuracy=caseAccuracyValue(c);
+  const missing=completion.missing.length?completion.missing.join("、"):"已完整";
+  const compareText=isCompareCase(c)?`｜採用 ${compareOptionLabel(fb.compareChosen||c?.compareChosen)}｜應驗 ${compareOptionLabel(fb.compareHit||c?.compareHit)}`:"";
+  return [
+    `${index+1}. ${c?.title||"未命名案例"}`,
+    `   題型：${c?.qtype||"待確認"}｜鎖定：${c?.lockedPalace||"待確認"}｜結果：${c?.result||"未記錄"}`,
+    `   問事：${c?.question||"未記錄"}`,
+    `   原判斷：${c?.summary||"未記錄"}`,
+    `   回驗：完整度 ${completion.done}/${completion.total}｜準確度 ${accuracy===null?"未回填":`${accuracy} 星`}｜應事 ${fb.hitArea||"未分類"}${compareText}`,
+    `   待補：${missing}`,
+    `   校準：${calibrationLabel(fb.calibration||c?.calibration)}｜備註：${fb.notes||fb.compareNote||c?.compareNote||""}`
+  ].join("\n");
+}
+function buildFilteredCaseReviewChecklist(cases=filteredReviewCases(),options={}){
+  const filter=options.filter||document.getElementById("caseReviewFilter")?.value||"all";
+  const query=options.query??(document.getElementById("caseSearch")?.value||"").trim();
+  const stats=caseStatsFromCases(cases);
+  return [
+    "九宮奇門 V5.0｜批次回驗清單",
+    `產生時間：${new Date().toLocaleString("zh-TW")}`,
+    `篩選：${caseReviewFilterLabel(filter)}`,
+    `搜尋：${query||"無"}`,
+    `案例數：${cases.length}`,
+    `完整案例：${stats.completeCount}｜可校準率：${stats.readinessPercent}%`,
+    "",
+    cases.length?cases.map(caseReviewDigestLine).join("\n\n"):"目前篩選沒有案例。",
+    "",
+    "提醒：這份清單用來補回驗資料與找偏差，不把少量案例當作正式規則結論。"
+  ].join("\n");
+}
+async function copyFilteredCaseReviewChecklist(){
+  const cases=filteredReviewCases();
+  if(!cases.length){toast("目前篩選沒有案例可複製。"); return}
+  const ok=await copyText(buildFilteredCaseReviewChecklist(cases));
+  toast(ok?"目前清單已複製。":"瀏覽器限制複製，請改用匯出 CSV。");
+}
 function caseAccuracyValue(c){
   const value=Number(c?.feedback?.accuracy||c?.userFeedback?.accuracy||c?.accuracy||"");
   return Number.isFinite(value)&&value>=1&&value<=5?value:null;
@@ -2059,11 +2111,7 @@ function renderCases(){
   const box=document.getElementById("caseList"); if(!box)return;
   const allCases=loadCases();
   renderCaseStats(allCases);
-  const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
-  const reviewFilter=document.getElementById("caseReviewFilter")?.value||"all";
-  const cases=allCases
-    .filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.compareChosen,c.feedback?.compareChosen,c.compareHit,c.feedback?.compareHit,c.compareNote,c.feedback?.compareNote,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query))
-    .filter(c=>caseMatchesReviewFilter(c,reviewFilter));
+  const cases=filteredReviewCases(allCases);
   if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
@@ -2126,6 +2174,7 @@ function init(){
   document.getElementById("saveCase").onclick=saveCurrentCase;
   document.getElementById("updateCaseResult").onclick=updateCaseResult;
   document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
+  document.getElementById("copyFilteredCaseReviewChecklist").onclick=copyFilteredCaseReviewChecklist;
   document.getElementById("copyCaseCalibrationSummary").onclick=copyCaseCalibrationSummary;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
@@ -2261,6 +2310,14 @@ function testCaseReviewChecklist(){
   console.assert(ok,"V5: review checklist should include missing fields and review prompts.");
   return ok;
 }
+function testFilteredCaseReviewChecklist(){
+  const text=buildFilteredCaseReviewChecklist([
+    {title:"比較案例",qtype:"合作",question:"選 A 或 B",lockedPalace:"A坎1｜B離9",result:"推薦 B",summary:"B 較穩",decisionOptions:[{side:"A"},{side:"B"}],compare:{winner:"B"},feedback:{accuracy:"2",hitArea:"合作",compareChosen:"A",compareHit:"mixed"}}
+  ],{filter:"compare-hit-mismatch",query:"合作"});
+  const ok=text.includes("批次回驗清單")&&text.includes("篩選：推薦未應驗")&&text.includes("案例數：1")&&text.includes("採用 選項 A")&&text.includes("應驗 混合應驗")&&text.includes("待補：");
+  console.assert(ok,"V5: filtered review checklist should summarize the visible calibration queue.");
+  return ok;
+}
 function testCaseReviewCsv(){
   const text=casesToReviewCsv([{savedAt:"2026-07-08",title:"測試,案例",qtype:"工作",outcome:"有結果",summary:"先小步驗證",feedback:{accuracy:"4",hitArea:"工作",verifiedSymbol:"驚門",riskReduced:"partial",calibration:"downgrade",compareChosen:"B",compareHit:"mixed",compareNote:"B 應驗，A 也有風險"}}]);
   const ok=text.includes("completion")&&text.includes("compareChosen")&&text.includes('"測試,案例"')&&text.includes("需改成風險降級")&&text.includes("部分降低")&&text.includes("選項 B")&&text.includes("混合應驗");
@@ -2336,6 +2393,7 @@ function runV5DevTests(){
   testCompareRecommendationMatchStats();
   testCaseReviewFilter();
   testCaseReviewChecklist();
+  testFilteredCaseReviewChecklist();
   testCaseReviewCsv();
   testCaseTrainingTask();
   testCaseCalibrationSummary();
