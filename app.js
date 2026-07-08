@@ -681,7 +681,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-21").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-22").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1224,6 +1224,7 @@ function comparePanelHTML(ctx){
   return `<div class="compare-result">
     <div class="compare-verdict"><strong>比較結論</strong>${escapeHTML(ctx.verdict)}</div>
     <div class="compare-cards">${ctx.ranked.map(choice=>compareCardHTML(choice,ctx.winner.side)).join("")}</div>
+    ${compareDecisionCardsHTML(ctx)}
     <div class="locked-summary"><strong>推薦取用</strong>${escapeHTML(ctx.winner.name)}較可用；若選${escapeHTML(ctx.weaker.name)}，請先照它的避險方法降級，不要一次重押。</div>
   </div>`;
 }
@@ -1254,6 +1255,59 @@ function compareChoiceRiskHint(choice){
 function compareDecisionLine(choice){
   const d=choice.decision||{};
   return `決策分 ${d.decisionScore}/100，可逆 ${d.reversibility}、成本 ${d.cost}、風險 ${d.risk}；鎖 ${choice.palace.key}${choice.palace.number}宮。`;
+}
+function compareDecisionCard(choice){
+  const name=String(choice?.name||"這個選項");
+  const style=decisionOptionStyle(name);
+  const d=choice.decision||{};
+  const riskHint=compareChoiceRiskHint(choice);
+  const stylePros={
+    hold:"成本最低，能保留觀察空間，不急著把局面推到不可逆。",
+    delay:"能讓情緒降溫，也能把條件、話術與停損點想清楚。",
+    probe:"可逆性最高，適合用小訊號、小金額或小承諾先測真實反應。",
+    commit:"速度最快，適合條件已清楚、窗口有限、需要主動取得進展時使用。",
+    neutral:"彈性較高，可以先用一個最小條件判斷要不要放大。"
+  };
+  const styleConditions={
+    hold:"適合在資訊不足、情緒未穩、承諾成本偏高時使用；但要設定回看時間。",
+    delay:"適合今天狀態不穩、對方條件未明、需要隔天再確認時使用。",
+    probe:"適合還看得到機會，但不確定對方態度、文件、金錢或承諾是否落地時使用。",
+    commit:"適合已掌握基本條件，且能把投入範圍、期限與停損點講清楚時使用。",
+    neutral:"適合選項本身還不夠具體，先把它縮成一個可驗證動作時使用。"
+  };
+  return {
+    side:choice.side,
+    name,
+    style,
+    advantage:`${stylePros[style]}盤面 ${choice.score}/100，決策 ${d.decisionScore}/100；${(d.notes||[]).join("、")}。`,
+    risk:compareRiskText(choice),
+    condition:styleConditions[style],
+    verify:`${d.verifyPoint||`先驗證「${name}」是否能取得明確回覆。`} 回驗時記錄：是否有明確回覆、條件是否落地、風險是否被降級。`,
+    evidence:`${choice.palace.key}${choice.palace.number}宮｜${choice.grade}｜${riskHint}`
+  };
+}
+function compareDecisionCardText(choice){
+  const card=compareDecisionCard(choice);
+  return [
+    `${card.side}｜${card.name}`,
+    `優點：${card.advantage}`,
+    `風險：${card.risk}`,
+    `適合條件：${card.condition}`,
+    `驗證點：${card.verify}`,
+    `盤面依據：${card.evidence}`
+  ].join("\n");
+}
+function compareDecisionCardsHTML(ctx){
+  return `<div class="decision-cards">${ctx.ranked.map(choice=>{
+    const card=compareDecisionCard(choice);
+    return `<div class="decision-card">
+      <strong>${escapeHTML(card.side)}｜${escapeHTML(card.name)}</strong>
+      <p><b>優點</b>${escapeHTML(card.advantage)}</p>
+      <p><b>風險</b>${escapeHTML(compactText(card.risk,150))}</p>
+      <p><b>適合條件</b>${escapeHTML(card.condition)}</p>
+      <p><b>驗證點</b>${escapeHTML(card.verify)}</p>
+    </div>`;
+  }).join("")}</div>`;
 }
 function compareActionText(choice){
   const name=String(choice?.name||"這個選項");
@@ -1456,7 +1510,7 @@ function compareEvidenceText(ctx){
   return ctx.ranked.map(choice=>`${choice.side}｜${choice.name}\n決策分：${choice.decision.decisionScore}/100｜可逆：${choice.decision.reversibility}｜成本：${choice.decision.cost}｜風險：${choice.decision.risk}\n${shortEvidenceBlock(choice.report,4)}`).join("\n\n");
 }
 function compareChoiceUseBlock(choice){
-  return `${choice.side}｜${choice.name}\n取用：${compareActionText(choice)}\n避開：${compareRiskText(choice)}\n驗證：${choice.decision.verifyPoint}`;
+  return `${compareDecisionCardText(choice)}\n\n取用：${compareActionText(choice)}\n避開：${compareRiskText(choice)}`;
 }
 function formatCompareSimpleReport(ctx){
   return [
@@ -1466,6 +1520,7 @@ function formatCompareSimpleReport(ctx){
     `推薦理由\n${ctx.winner.name}目前較可用；${ctx.winner.report.headline}`,
     `另一選項風險\n${ctx.weaker.name}不是完全不能選，但要先處理：${compareRiskText(ctx.weaker)}`,
     `今天怎麼做\n- ${compareLeadAction(ctx.winner)}\n- ${compareActionText(ctx.winner)}\n- 若仍想選${ctx.weaker.name}，先縮小投入、延後承諾、補齊條件。`,
+    `決策卡\n${ctx.ranked.map(compareDecisionCardText).join("\n\n")}`,
     `選項排序\n${ctx.ranked.map((choice,i)=>`${i+1}. ${choice.side}｜${choice.name}｜決策 ${choice.decision.decisionScore}/100｜盤面 ${choice.score}/100｜${choice.decision.notes.join("、")}`).join("\n")}`,
     `主要依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
@@ -1481,7 +1536,7 @@ function formatCompareDetailReport(ctx){
     stateBlocks,
     `四、為什麼推薦${ctx.winner.name}\n${ctx.verdict}\n${ctx.winner.report.opportunity}`,
     `五、主要風險排序\n${ctx.ranked.map(choice=>`${choice.side}｜${choice.name}：${choice.report.obstacle}`).join("\n")}`,
-    `六、各選項取用方法\n${useBlocks}`,
+    `六、各選項決策卡\n${useBlocks}`,
     `九、回驗方式\n- 看哪個選項先出現明確回覆、文件、款項或可執行條件。\n- 看哪個選項的阻礙先被降級。\n- 事後回填結果，記錄實際應在哪個選項。`,
     `十、比較依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
@@ -1493,7 +1548,7 @@ function formatCompareTeacherReport(ctx){
     ctx.question?`問事：${ctx.question}`:"",
     `第一步，先看各選項宮位\n${ctx.ranked.map(choice=>`${choice.side} 是 ${choice.name}：${choice.num} 號，鎖 ${choice.palace.key}${choice.palace.number}宮，盤面 ${choice.score}/100｜決策 ${choice.decision.decisionScore}/100｜${choice.grade}。`).join("\n")}`,
     `第二步，看勝負不是只看盤面分數\n${ctx.verdict}\n決策分差距：${ctx.diff}。差距小於 10 時，不宜硬說誰一定贏；要看條件是否清楚、風險是否容易降級。`,
-    `第三步，看每個選項的用法\n${ctx.ranked.map(compareChoiceUseBlock).join("\n\n")}`,
+    `第三步，看每個選項的決策卡\n${ctx.ranked.map(compareChoiceUseBlock).join("\n\n")}`,
     `第五步，落到現實決策\n先選${ctx.winner.name}作主線，但不要把${ctx.weaker.name}完全丟掉；如果現實條件反而是${ctx.weaker.name}先落實，就用小步試做驗證，不要一次重押。`,
     `逐條依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
@@ -1520,7 +1575,7 @@ function currentCase(){
     const ctx=buildCompareContext();
     const feedback=caseFeedbackFromForm();
     const compareRecord=Object.fromEntries(ctx.choices.map(choice=>[choice.side,{name:choice.name,num:choice.num,score:choice.score,decisionScore:choice.decision.decisionScore,palace:`${choice.palace.key}${choice.palace.number}`,decision:choice.decision}]));
-    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:ctx.choices.map(choice=>`${choice.side} ${choice.name}:${choice.palace.key}${choice.palace.number}`).join("｜"),selfPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.selfPalace.key}`).join("｜"),matterPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.matterPalace.key}`).join("｜"),result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,threePalaceSnapshot:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.threePalace])),scoreBreakdown:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.scoreBreakdown])),decisionOptions:ctx.ranked.map(choice=>({side:choice.side,name:choice.name,num:choice.num,palace:`${choice.palace.key}${choice.palace.number}`,score:choice.score,decision:choice.decision})),userFeedback:feedback,compare:{...compareRecord,winner:ctx.winner.side,ranking:ctx.ranked.map(choice=>choice.side)},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
+    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:ctx.choices.map(choice=>`${choice.side} ${choice.name}:${choice.palace.key}${choice.palace.number}`).join("｜"),selfPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.selfPalace.key}`).join("｜"),matterPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.matterPalace.key}`).join("｜"),result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,threePalaceSnapshot:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.threePalace])),scoreBreakdown:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.scoreBreakdown])),decisionCards:ctx.ranked.map(compareDecisionCard),decisionOptions:ctx.ranked.map(choice=>({side:choice.side,name:choice.name,num:choice.num,palace:`${choice.palace.key}${choice.palace.number}`,score:choice.score,decision:choice.decision,decisionCard:compareDecisionCard(choice)})),userFeedback:feedback,compare:{...compareRecord,winner:ctx.winner.side,ranking:ctx.ranked.map(choice=>choice.side)},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
   }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   const feedback=caseFeedbackFromForm();
@@ -2092,6 +2147,14 @@ function testCompareOptionTextsDiffer(){
   console.assert(ok,"V5: compare option guidance should differ by option style and decision metrics.");
   return ok;
 }
+function testCompareDecisionCardFields(){
+  const choice={side:"A",name:"先發簡短訊息",score:72,grade:"可小用",palace:{key:"巽",number:4},decision:{decisionScore:80,reversibility:85,cost:25,risk:30,notes:["可逆性較高","成本較小"],verifyPoint:"先看對方是否明確回覆。"},report:{riskProfile:[{type:"口舌刺激",action:"避免逼問。"}],obstacle:"口舌刺激。"}};
+  const card=compareDecisionCard(choice);
+  const text=compareDecisionCardText(choice);
+  const ok=["advantage","risk","condition","verify","evidence"].every(key=>String(card[key]||"").length>0)&&text.includes("優點：")&&text.includes("適合條件：")&&text.includes("驗證點：");
+  console.assert(ok,"V5: compare decision card should expose advantage, risk, condition and verification fields.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -2112,5 +2175,6 @@ function runV5DevTests(){
   testQuestionRewrite();
   testDecisionOptionDrafts();
   testCompareOptionTextsDiffer();
+  testCompareDecisionCardFields();
 }
 init();

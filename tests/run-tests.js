@@ -48,7 +48,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-21"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-22"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -66,6 +66,7 @@ assert(app.includes("compareSelections"), "compare selections state is missing")
 assert(app.includes("COMPARE_SIDES"), "multi-option comparison sides are missing");
 assert(app.includes("decisionMetricsForChoice"), "decision option metrics are missing");
 assert(app.includes("decisionOptions"), "case records should store decision options");
+assert(app.includes("decisionCards"), "case records should store decision cards");
 assert(app.includes("scorePalaceV5"), "V5 scoring function is missing");
 assert(app.includes("diagnoseQuestion"), "question diagnosis function is missing");
 assert(app.includes("buildQuestionRewrite"), "question rewrite helper is missing");
@@ -118,12 +119,15 @@ assert(app.includes("testCaseCalibrationSummary"), "case calibration summary dev
 assert(app.includes("testQuestionRewrite"), "question rewrite dev test is missing");
 assert(app.includes("testDecisionOptionDrafts"), "decision option draft dev test is missing");
 assert(app.includes("decisionOptionStyle"), "compare option style classifier is missing");
+assert(app.includes("compareDecisionCard"), "compare decision card helper is missing");
 assert(app.includes("testCompareOptionTextsDiffer"), "compare option text differentiation dev test is missing");
+assert(app.includes("testCompareDecisionCardFields"), "compare decision card dev test is missing");
 assert(app.includes("reportSectionClass"), "report section layout classifier is missing");
 assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
 assert(style.includes(".report-section"), "structured report section styles are missing");
 assert(style.includes(".report-list"), "report list styles are missing");
 assert(style.includes(".report-highlight"), "report highlight styles are missing");
+assert(style.includes(".decision-card"), "decision card styles are missing");
 assert(style.includes(".case-stats"), "case stats styles are missing");
 assert(style.includes(".case-progress"), "100-case progress styles are missing");
 assert(style.includes(".case-next-task"), "case next task styles are missing");
