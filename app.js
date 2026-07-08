@@ -641,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-12").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-13").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1044,6 +1044,40 @@ function taixuReportIntro(mode){
   if(mode==="simple")return "不說廢話，先看結論：這份報告不把吉凶講死，只看哪裡可用、哪裡受阻，以及今天怎麼把風險降級。";
   return "不說廢話，正式開始。奇門不是用來製造恐懼，而是把盤面拆成可觀察、可驗證、可調整的系統：先看平衡有沒有失衡，流通有沒有受阻，再把風險降級。";
 }
+function riskProfileRule(symbol){
+  const map={
+    "空":{type:"未落實",source:"空亡",action:"先等條件填實，不把口頭訊號當成交或承諾。"},
+    "空亡":{type:"未落實",source:"空亡",action:"先等條件填實，不把口頭訊號當成交或承諾。"},
+    "玄武":{type:"資訊不透明",source:"玄武",action:"查證來源，錢、時間、責任與條件都留文字。"},
+    "驚門":{type:"口舌刺激",source:"驚門",action:"先核對訊息，不急回、不連續追問、不被一句話帶走。"},
+    "杜門":{type:"流程卡點",source:"杜門",action:"先整理資料、等審核、補文件，不硬闖流程。"},
+    "白虎":{type:"衝突壓力",source:"白虎",action:"避免硬碰硬，危險操作與情緒對抗先降速。"},
+    "傷門":{type:"衝突壓力",source:"傷門",action:"先談事實與界線，不用刺激性語氣放大衝突。"},
+    "迫":{type:"行動受迫",source:"門迫",action:"縮小動作，先做最低成本驗證，不一次壓到底。"},
+    "門迫":{type:"行動受迫",source:"門迫",action:"縮小動作，先做最低成本驗證，不一次壓到底。"},
+    "刑":{type:"內耗卡住",source:"擊刑",action:"先釐清內部矛盾與責任邊界，再談推進。"},
+    "擊刑":{type:"內耗卡住",source:"擊刑",action:"先釐清內部矛盾與責任邊界，再談推進。"},
+    "墓":{type:"進展收住",source:"入墓",action:"先整理、歸檔、收尾，等條件打開再放大。"},
+    "入墓":{type:"進展收住",source:"入墓",action:"先整理、歸檔、收尾，等條件打開再放大。"}
+  };
+  return map[symbol]||null;
+}
+function buildRiskProfile(p,evidence,diagnosis){
+  const symbols=[p?.door,p?.god,p?.star,...(p?.flags||[]),...(evidence||[]).map(ev=>ev.name)].filter(Boolean);
+  const rows=[]; const used=new Set();
+  symbols.forEach(sym=>{
+    const rule=riskProfileRule(sym);
+    if(rule&&!used.has(rule.type)){rows.push(rule); used.add(rule.type)}
+  });
+  (diagnosis?.riskTypes||[]).forEach(type=>{
+    if(!used.has(type)){rows.push({type,source:"問題診斷",action:"把問題問窄，先驗證一個最小行動。"}); used.add(type)}
+  });
+  if(!rows.length)rows.push({type:"待觀察",source:"盤面未見集中風險",action:"仍以小步驗證為主，不把順象當保證。"});
+  return rows.slice(0,6);
+}
+function riskProfileText(profile){
+  return (profile||[]).map(item=>`${item.type}｜${item.source}：${item.action}`).join("\n");
+}
 function generateSoulReport(sourceChart, selectedPalace, qtype){
   const p=selectedPalace; const s=scorePalace(p,qtype); const bank=copyBank(); const evidence=buildCopyBankEvidence(sourceChart,p,qtype,s);
   const today=buildTodayAdvice(p,s,qtype); const feng=buildFengShuiPlan(p); const threePalace=analyzeThreePalaces(sourceChart,selectedNum,qtype);
@@ -1064,9 +1098,12 @@ function generateSoulReport(sourceChart, selectedPalace, qtype){
   const actionPlan=qtype==="今日運勢"?taixuBullet(today.suitable):taixuJoinEvidence(evidence,ev=>["門","神","組合","題型"].includes(ev.source),`現象：本題重點是${qtypeRule(qtype).tone}。邏輯：題型會改變同一個象的用法。降級方案：${qtypeAdvice(qtype)}`);
   const avoidPlan=qtype==="今日運勢"?taixuBullet(today.avoid):taixuJoinEvidence(evidence,ev=>ev.type==="risk"||ev.source==="特殊象","現象：目前不適合重押。邏輯：風險象代表能量流動受阻或條件未實。降級方案：不要急著定案，先查證條件，保留退路。");
   const fengShui=[feng.activate,feng.quiet,feng.avoid].map(line=>`環境調整：${line} 這不是改命，而是把地利整理到比較不干擾人的狀態。`).join("\n");
+  const problemDiagnosis=sourceChart?.problemDiagnosis||diagnoseQuestion(sourceChart?.question||questionText());
+  const riskProfile=buildRiskProfile(p,evidence,problemDiagnosis);
   return {
     headline, score:s.score, level,
-    problemDiagnosis:sourceChart?.problemDiagnosis||diagnoseQuestion(sourceChart?.question||questionText()),
+    problemDiagnosis,
+    riskProfile,
     palaceSummary:`報數 ${selectedNum} 鎖 ${p.key}${p.number}宮，方位在${PALACE_DIR[p.key]}，五行屬${PALACE_ELEM[p.key]}。本次以「${qtype}」解讀，依鎖定宮、本人宮、事情宮、宮、門、星、神、干、特殊象與題型組合判斷。`,
     threePalace,
     scoreBreakdown:{baseScore:s.baseScore,qtypeScore:s.qtypeScore,finalScore:s.score,ruleTrace:s.ruleTrace,severity:s.severity,directDeny:s.directDeny},
@@ -1198,10 +1235,11 @@ function renderResult(){
   document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">鎖定 ${p.key}${p.number}</span>`,`<span class="tab">本人 ${report.threePalace.selfPalace.key}</span>`,`<span class="tab">事情 ${report.threePalace.matterPalace.key}</span>`,`<span class="tab">用途已套用</span>`].join("");
   document.getElementById("resultHeadline").textContent=report.headline;
   const evidence=resultEvidenceItems(report.evidence).map(ev=>`<div class="item"><strong>${escapeHTML(ev.source)}｜${escapeHTML(ev.name)}</strong>${escapeHTML(taixuEvidenceSentence(ev))}</div>`).join("");
+  const riskProfileCards=(report.riskProfile||[]).map(item=>`<div class="item action"><strong>${escapeHTML(item.type)}｜${escapeHTML(item.source)}</strong>${escapeHTML(item.action)}</div>`).join("");
   const today=report.todayAdvice;
   const todayCards=chart.settings.qtype==="今日運勢"?`<div class="item action"><strong>今日總運</strong>${escapeHTML(today.total)}｜主題：${escapeHTML(today.topic)}</div><div class="item action"><strong>今日說話</strong>${escapeHTML(today.speech)}</div><div class="item action"><strong>今日財務</strong>${escapeHTML(today.finance)}</div><div class="item action"><strong>今日工作</strong>${escapeHTML(today.work)}</div><div class="item action"><strong>健康提醒</strong>${escapeHTML(today.health)}</div>`:"";
   const tp=report.threePalace, fs=report.fengShuiPlan;
-  document.getElementById("resultList").innerHTML=`<div class="item"><strong>三宮摘要</strong>鎖定 ${escapeHTML(tp.lockPalace.key)}宮｜本人 ${escapeHTML(tp.selfPalace.key)}宮｜事情 ${escapeHTML(tp.matterPalace.key)}宮。${escapeHTML(tp.relationSelfMatter.text)}</div><div class="item action"><strong>今天先做 3 條</strong>${escapeHTML(compactBulletBlock(report.actionPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>今天先避 3 條</strong>${escapeHTML(compactBulletBlock(report.avoidPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>風水三方位</strong>啟動方：${escapeHTML(fs.activateChoice.direction)}｜安靜方：${escapeHTML(fs.quietChoice.direction)}｜避動方：${escapeHTML(fs.avoidChoice.direction)}</div>${todayCards}<div class="item"><strong>用途權重</strong>基礎分 ${report.scoreBreakdown.baseScore}｜用途加權 ${report.scoreBreakdown.qtypeScore>=0?"+":""}${report.scoreBreakdown.qtypeScore}｜嚴重度 ${escapeHTML(report.severity.level)}</div>${evidence}`;
+  document.getElementById("resultList").innerHTML=`<div class="item"><strong>三宮摘要</strong>鎖定 ${escapeHTML(tp.lockPalace.key)}宮｜本人 ${escapeHTML(tp.selfPalace.key)}宮｜事情 ${escapeHTML(tp.matterPalace.key)}宮。${escapeHTML(tp.relationSelfMatter.text)}</div>${riskProfileCards}<div class="item action"><strong>今天先做 3 條</strong>${escapeHTML(compactBulletBlock(report.actionPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>今天先避 3 條</strong>${escapeHTML(compactBulletBlock(report.avoidPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>風水三方位</strong>啟動方：${escapeHTML(fs.activateChoice.direction)}｜安靜方：${escapeHTML(fs.quietChoice.direction)}｜避動方：${escapeHTML(fs.avoidChoice.direction)}</div>${todayCards}<div class="item"><strong>用途權重</strong>基礎分 ${report.scoreBreakdown.baseScore}｜用途加權 ${report.scoreBreakdown.qtypeScore>=0?"+":""}${report.scoreBreakdown.qtypeScore}｜嚴重度 ${escapeHTML(report.severity.level)}</div>${evidence}`;
 }
 function todayReportBlock(report){
   const t=report.todayAdvice;
@@ -1293,6 +1331,7 @@ function formatNinePartReport(report,question,mode="detail"){
     taixuReportIntro("detail"),
     question?`問事：${question}`:"",
     `零、問題診斷\n建議用途：${report.problemDiagnosis.suggestedQtype}｜信心：${report.problemDiagnosis.confidence}｜問題型態：${report.problemDiagnosis.decisionIntent}\n風險類型：${(report.problemDiagnosis.riskTypes||[]).join("、")||"待觀察"}\n建議追問：${(report.problemDiagnosis.followUps||[]).join("；")||"問題已足夠明確。"}`,
+    `零之一、風險類型\n${riskProfileText(report.riskProfile)}`,
     `一、一句話總斷\n${report.headline}\n分數與傾向：${report.score}/100｜${report.level}\n基礎分：${report.scoreBreakdown.baseScore}｜用途加權：${report.scoreBreakdown.qtypeScore}｜嚴重度：${report.severity.level}`,
     `二、此事主題\n${report.todayAdvice.topic}。本題以「${chart.settings.qtype}」看，重點是${qtypeRule(chart.settings.qtype).tone}。`,
     `三、本人狀態（日干宮）\n${palaceLine("本人宮",report.threePalace.selfPalace)}\n${report.threePalace.relationSelfMatter.text}`,
@@ -1313,6 +1352,7 @@ function formatSimpleReport(report,question){
     "簡略報告",
     question?`問事：${question}`:"",
     `問題診斷\n建議用途：${report.problemDiagnosis.suggestedQtype}｜${report.problemDiagnosis.decisionIntent}｜風險：${(report.problemDiagnosis.riskTypes||[]).slice(0,3).join("、")||"待觀察"}`,
+    `風險類型\n${riskProfileText(report.riskProfile)}`,
     `一句話總斷\n${report.headline}`,
     `傾向\n${report.score}/100｜${report.level}｜用途加權 ${report.scoreBreakdown.qtypeScore>=0?"+":""}${report.scoreBreakdown.qtypeScore}`,
     `三宮\n鎖定：${report.threePalace.lockPalace.key}宮｜本人：${report.threePalace.selfPalace.key}宮｜事情：${report.threePalace.matterPalace.key}宮\n${compactText(report.threePalace.relationSelfMatter.text,120)}`,
@@ -1335,6 +1375,7 @@ function formatTeacherReport(report,question,m,p){
     `盤面骨架\n${p.key}宮、${p.door||"無門"}、${p.star||"無星"}、${p.god||"無神"}、${stems}\n特殊象：${p.flags.length?p.flags.map(flagText).join("；"):"無明顯空亡、入墓、門迫、擊刑、驛馬標記。"}`,
     `老師總斷\n${report.headline}\n分數不是命令，只是目前能量天平的傾向：${report.score}/100｜${report.level}`,
     `太極三宮\n${threePalaceText(report)}`,
+    `風險類型\n${riskProfileText(report.riskProfile)}`,
     `這盤怎麼讀\n${teacherLayerArticle(report,p,chart.settings.qtype)}`,
     `取用方法\n${report.actionPlan}`,
     `避險方法\n${report.avoidPlan}`,
@@ -1765,10 +1806,17 @@ function testNoDuplicateIds(){
 function testReportContainsRequiredSections(){
   if(!chart||!selectedNum)return true;
   const text=makeReport("detail");
-  const required=["一句話總斷","此事主題","本人狀態","事情本體","直覺鎖定宮","三宮關係","可用機會","主要風險","今日行動","今日避忌","風水三方位","驗證點","解盤依據"];
+  const required=["問題診斷","風險類型","一句話總斷","此事主題","本人狀態","事情本體","直覺鎖定宮","三宮關係","可用機會","主要風險","今日行動","今日避忌","風水三方位","驗證點","解盤依據"];
   const missing=required.filter(x=>!text.includes(x));
   console.assert(!missing.length,`V5: report missing sections: ${missing.join(", ")}`);
   return !missing.length;
+}
+function testRiskProfileMapsSymbols(){
+  const profile=buildRiskProfile({door:"驚門",god:"玄武",star:"天心",flags:["空"]},[],{riskTypes:["財務風險"]});
+  const types=profile.map(x=>x.type);
+  const ok=types.includes("口舌刺激")&&types.includes("資訊不透明")&&types.includes("未落實")&&types.includes("財務風險");
+  console.assert(ok,"V5: risk profile should map symbols to real-world risk types.");
+  return ok;
 }
 function testCaseSaveAndReload(){
   const payload={version:RULE_VERSION.app,cases:[{id:"v5-test",reportVersion:"soul-report.v5",threePalaceSnapshot:{},scoreBreakdown:{}}]};
@@ -1826,6 +1874,7 @@ function runV5DevTests(){
   testThreePalaceFound();
   testNoDuplicateIds();
   testReportContainsRequiredSections();
+  testRiskProfileMapsSymbols();
   testCaseSaveAndReload();
   testCaseStatsAggregation();
   testMilestoneUsesFeedbackCount();

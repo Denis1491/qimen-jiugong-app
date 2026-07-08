@@ -45,7 +45,7 @@ assert(html.includes("copyCaseReviewChecklist"), "case review checklist copy but
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-12"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-13"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -66,6 +66,8 @@ assert(app.includes("decisionOptions"), "case records should store decision opti
 assert(app.includes("scorePalaceV5"), "V5 scoring function is missing");
 assert(app.includes("diagnoseQuestion"), "question diagnosis function is missing");
 assert(app.includes("problemDiagnosis"), "problem diagnosis should be stored with charts/cases");
+assert(app.includes("buildRiskProfile"), "risk profile builder is missing");
+assert(app.includes("riskProfileText"), "risk profile report text is missing");
 assert(app.includes("analyzeThreePalaces"), "three-palace analysis is missing");
 assert(app.includes("findPalacesBySymbol"), "symbol palace lookup is missing");
 assert(app.includes("palaceRelation"), "palace relation helper is missing");
