@@ -1523,6 +1523,22 @@ function renderBucketList(items){
     return `<span>${escapeHTML(item.name)} ${item.count} 筆${escapeHTML(avg)}</span>`;
   }).join("");
 }
+function caseCompletion(c){
+  const fb=c?.feedback||{};
+  const checks=[
+    ["實際結果",Boolean((c?.outcome||fb.outcome||"").trim())],
+    ["準確度",caseAccuracyValue(c)!==null],
+    ["應事分類",Boolean(fb.hitArea)],
+    ["是否照做",Boolean((c?.afterAction||fb.afterAction||"").trim())],
+    ["應驗象",Boolean((c?.verifiedSymbol||fb.verifiedSymbol||"").trim())],
+    ["風險降低",Boolean(c?.riskReduced||fb.riskReduced)],
+    ["偏離結果",Boolean((c?.deviationResult||fb.deviationResult||"").trim())],
+    ["校準結論",Boolean(c?.calibration||fb.calibration)]
+  ];
+  const done=checks.filter(([,ok])=>ok).length;
+  const missing=checks.filter(([,ok])=>!ok).map(([name])=>name);
+  return {done,total:checks.length,missing,percent:Math.round(done/checks.length*100)};
+}
 function caseProgressHTML(milestone){
   return `<div class="case-progress">
     <div><strong>100 回驗進度</strong><span>${milestone.done}/100｜已存 ${milestone.total} 筆｜${escapeHTML(milestone.label)}</span></div>
@@ -1573,12 +1589,15 @@ function renderCases(){
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
     const numLabel=c.decisionOptions?c.decisionOptions.map(opt=>`${opt.side}${opt.num}`).join("/"):c.compare?.A&&c.compare?.B?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
+    const completion=caseCompletion(c);
+    const missingText=completion.missing.length?`待補：${completion.missing.slice(0,4).join("、")}${completion.missing.length>4?"等":""}`:"回驗資料完整";
     return `<div class="case-card" data-case-id="${escapeHTML(c.id)}">
     <div>
       <h3>${escapeHTML(c.title)}</h3>
       <small>${escapeHTML(c.qtype)}｜鎖定 ${escapeHTML(c.lockedPalace)}｜本人 ${escapeHTML(c.selfPalace||"待確認")}｜事情 ${escapeHTML(c.matterPalace||"待確認")}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
       ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
       <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span><span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span><span class="tab">${escapeHTML(calibrationLabel(c.calibration||c.feedback?.calibration))}</span></div>
+      <div class="case-completion"><strong>回驗完整度 ${completion.done}/${completion.total}</strong><span>${escapeHTML(missingText)}</span></div>
       ${c.deviationResult||c.feedback?.deviationResult?`<small>偏離建議後：${escapeHTML(c.deviationResult||c.feedback?.deviationResult)}</small>`:""}
       ${fb.notes?`<small>備註：${escapeHTML(fb.notes)}</small>`:""}
     </div>
@@ -1694,6 +1713,12 @@ function testMilestoneUsesFeedbackCount(){
   console.assert(ok,"V5: 100-case milestone should count reviewed feedback, not saved cases.");
   return ok;
 }
+function testCaseCompletionMissingFields(){
+  const result=caseCompletion({outcome:"有結果",feedback:{accuracy:"4",hitArea:"工作",riskReduced:"yes"}});
+  const ok=result.done===4&&result.total===8&&result.missing.includes("應驗象")&&result.missing.includes("校準結論");
+  console.assert(ok,"V5: case completion should expose missing feedback fields.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1704,5 +1729,6 @@ function runV5DevTests(){
   testCaseSaveAndReload();
   testCaseStatsAggregation();
   testMilestoneUsesFeedbackCount();
+  testCaseCompletionMissingFields();
 }
 init();
