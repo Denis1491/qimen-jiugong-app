@@ -1,12 +1,12 @@
-const CACHE_NAME = "qimen-jiugong-v4-3-compare-1";
+const CACHE_NAME = "qimen-jiugong-v4-3-report-layout-1";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=compare-1",
-  "./engine.js?v=compare-1",
-  "./qimen_soul_copy_bank.js?v=compare-1",
-  "./app.js?v=compare-1",
-  "./manifest.webmanifest?v=compare-1",
+  "./style.css?v=report-layout-1",
+  "./engine.js?v=report-layout-1",
+  "./qimen_soul_copy_bank.js?v=report-layout-1",
+  "./app.js?v=report-layout-1",
+  "./manifest.webmanifest?v=report-layout-1",
   "./rules/rules.json",
   "./rules/lock-palace.json",
   "./rules/scoring.json",

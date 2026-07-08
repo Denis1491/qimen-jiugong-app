@@ -444,7 +444,76 @@ function qtypeAdvice(topic){
     "今日運勢":"今天先抓一件最重要的事處理，其餘不要分心。"
   }[topic]||"先小步試，不要一次賭到底。"
 }
-function renderReport(){document.getElementById("reportBox").textContent=makeReport(reportMode)}
+function isReportHeading(line){
+  const text=String(line||"").trim();
+  if(!text)return false;
+  if(/^[一二三四五六七八九十]+、/.test(text))return true;
+  if(/^第[一二三四五六七八九十]+步/.test(text))return true;
+  return [
+    "結論","傾向","現在最重要的事","今天先做","今天先避開","風水微調","驗證","主要依據",
+    "比較結論","推薦理由","另一選項風險","今天怎麼做","起盤資料","鎖定宮位","盤面骨架",
+    "老師總斷","這盤怎麼讀","取用方法","避險方法","逐條依據","回驗方式","提醒"
+  ].some(title=>text===title||text.startsWith(title+"："));
+}
+function reportSectionClass(title){
+  const t=String(title||"");
+  const cls=["report-section"];
+  if(/結論|總斷|推薦/.test(t))cls.push("report-highlight");
+  if(/避|阻礙|風險|不宜|提醒/.test(t))cls.push("report-caution");
+  if(/依據|證|回驗/.test(t))cls.push("report-evidence");
+  return cls.join(" ");
+}
+function reportLineHTML(line){
+  const text=String(line||"").trim();
+  if(!text)return "";
+  const meta=text.match(/^([^：]{2,8})：(.*)$/);
+  if(meta&&/問事|時間|農曆|四柱|起局|推薦|備選|分數|傾向|避開|取用|避險|特殊象/.test(meta[1])){
+    return `<p class="report-meta"><strong>${escapeHTML(meta[1])}</strong><span>${escapeHTML(meta[2].trim())}</span></p>`;
+  }
+  return `<p>${escapeHTML(text)}</p>`;
+}
+function reportLinesHTML(lines){
+  const out=[]; let list=null;
+  const closeList=()=>{if(list){out.push(`${list.type==="ol"?"</ol>":"</ul>"}`); list=null;}};
+  lines.forEach(raw=>{
+    const text=String(raw||"").trim(); if(!text)return;
+    const bullet=text.match(/^[-•]\s*(.+)$/);
+    const ordered=text.match(/^(\d+)[.、]\s*(.+)$/);
+    if(bullet||ordered){
+      const type=ordered?"ol":"ul";
+      if(!list||list.type!==type){closeList(); list={type}; out.push(type==="ol"?`<ol class="report-list numbered">`:`<ul class="report-list">`);}
+      out.push(`<li>${escapeHTML((bullet||ordered)[ordered?2:1])}</li>`);
+      return;
+    }
+    closeList();
+    out.push(reportLineHTML(text));
+  });
+  closeList();
+  return out.join("");
+}
+function reportBlockHTML(block,index){
+  const lines=String(block||"").split(/\n+/).map(line=>line.trim()).filter(Boolean);
+  if(!lines.length)return "";
+  if(lines.length===1){
+    const line=lines[0];
+    if(/^\d+[.、]\s*/.test(line))return `<section class="${reportSectionClass("解盤依據")}"><div class="report-body">${reportLinesHTML([line])}</div></section>`;
+    if(isReportHeading(line))return `<section class="${reportSectionClass(line)}"><h4>${escapeHTML(line)}</h4></section>`;
+    const cls=index<2?"report-intro":"report-paragraph";
+    return `<div class="${cls}">${reportLineHTML(line)}</div>`;
+  }
+  const first=lines[0];
+  const title=isReportHeading(first)||lines.length>1?first:"";
+  const body=title?lines.slice(1):lines;
+  return `<section class="${reportSectionClass(title)}">${title?`<h4>${escapeHTML(title)}</h4>`:""}<div class="report-body">${reportLinesHTML(body)}</div></section>`;
+}
+function reportHTML(text){
+  const raw=String(text||"").trim();
+  if(!raw)return `<div class="report-empty">尚未產生報告。</div>`;
+  const blocks=raw.split(/\n{2,}/).map(block=>block.trim()).filter(Boolean);
+  const title=blocks.shift()||"九宮奇門報告";
+  return `<article class="report-article"><h3 class="report-title">${escapeHTML(title)}</h3>${blocks.map(reportBlockHTML).join("")}</article>`;
+}
+function renderReport(){document.getElementById("reportBox").innerHTML=reportHTML(makeReport(reportMode))}
 function makeReport(mode=reportMode){
   if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
   if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門報告`,question?`問事：${question}`:"",`結論：${summary.short}`,`大師斷語：${summary.total}`,`今天怎麼做：${summary.action}`,`先避開：${summary.avoid}`,`補運方法：${summary.fengshui}`].filter(Boolean).join("\n\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`大師斷語：${summary.total}`); out.push(`今天怎麼做：${summary.action}`); out.push(`先避開：${summary.avoid}`); out.push(`補運方法：${summary.fengshui}`); out.push(""); out.push(`提醒：`); s.reasons.forEach(r=>out.push(`- ${r.text}`));}
@@ -567,7 +636,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=compare-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=report-layout-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1210,7 +1279,7 @@ function init(){
   document.getElementById("resetInquiryAsk").onclick=resetInquiry;
   document.getElementById("resetInquiryChart").onclick=resetInquiry;
   document.getElementById("printBtn").onclick=()=>window.print();
-  document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").textContent=text; toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
+  document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").innerHTML=reportHTML(text); toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
   document.getElementById("downloadTxt").onclick=()=>download("九宮奇門報告.txt",makeReport());
   document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify(chartPayload(),null,2),"application/json;charset=utf-8");
   document.getElementById("importJsonBtn").onclick=()=>document.getElementById("importJsonInput").click();

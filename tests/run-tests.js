@@ -9,6 +9,7 @@ const assert = (condition, message) => {
 };
 
 const html = read("index.html");
+const style = read("style.css");
 const engine = read("engine.js");
 const app = read("app.js");
 const copyBank = read("qimen_soul_copy_bank.js");
@@ -33,6 +34,7 @@ assert(html.includes("selectionMode"), "selection mode control is missing");
 assert(html.includes("comparePanel"), "compare mode panel is missing");
 assert(html.includes("optionAName") && html.includes("optionBName"), "compare option fields are missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
+assert(html.includes("report-layout-1"), "cache-busting version should be updated for report layout");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -47,7 +49,12 @@ assert(app.includes("老師教學"), "teacher report article is missing");
 assert(app.includes("buildCompareContext"), "compare report context builder is missing");
 assert(app.includes("formatCompareReport"), "compare report formatter is missing");
 assert(app.includes("compareSelections"), "compare selections state is missing");
+assert(app.includes("reportHTML"), "structured report renderer is missing");
+assert(app.includes("reportSectionClass"), "report section layout classifier is missing");
 assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
+assert(style.includes(".report-section"), "structured report section styles are missing");
+assert(style.includes(".report-list"), "report list styles are missing");
+assert(style.includes(".report-highlight"), "report highlight styles are missing");
 assert(copyBank.includes("window.QIMEN_COPY_BANK"), "copy bank must expose window.QIMEN_COPY_BANK");
 assert(engine.includes("QIMEN_RULE_VERSION"), "engine.js must expose rule version");
 assert(engine.includes("QIMEN_RULE_FILES"), "engine.js must expose rule file index");
