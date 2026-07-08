@@ -45,7 +45,7 @@ assert(html.includes("copyCaseReviewChecklist"), "case review checklist copy but
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-15"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-16"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -92,6 +92,8 @@ assert(app.includes("csvCell"), "CSV cell escaping helper is missing");
 assert(app.includes("caseStatsFromCases"), "case stats aggregation is missing");
 assert(app.includes("symbolHitKey"), "symbol-hit cross-analysis helper is missing");
 assert(app.includes("bySymbolHitArea"), "symbol-hit cross-analysis stats are missing");
+assert(app.includes("actionFollowedLabel"), "action-followed classifier is missing");
+assert(app.includes("byActionEffect"), "action effectiveness stats are missing");
 assert(app.includes("renderCaseStats"), "case stats renderer is missing");
 assert(app.includes("calibrationHints"), "case calibration hints are missing");
 assert(app.includes("testCaseStatsAggregation"), "case stats dev test is missing");
