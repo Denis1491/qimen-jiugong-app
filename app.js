@@ -641,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-14").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-15").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1565,6 +1565,9 @@ function rankedBuckets(map,limit=4){
     .sort((a,b)=>(b.accuracyCount-a.accuracyCount)||(b.count-a.count)||a.name.localeCompare(b.name,"zh-Hant"))
     .slice(0,limit);
 }
+function symbolHitKey(symbol,hitArea){
+  return `${symbol||"未填應驗象"} → ${hitArea||"未分類"}`;
+}
 function riskReducedLabel(value){
   return {yes:"有降低",partial:"部分降低",no:"沒有降低",unknown:"看不出來"}[value]||"未回填";
 }
@@ -1581,22 +1584,24 @@ function caseMilestone(reviewed,total=reviewed){
   return {next,done,percent,remaining,label,total};
 }
 function caseStatsFromCases(cases){
-  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),highTrace:new Map(),lowTrace:new Map()};
+  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),highTrace:new Map(),lowTrace:new Map()};
   cases.forEach(c=>{
     const accuracy=caseAccuracyValue(c);
     const verifiedSymbol=(c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"").trim();
+    const hitArea=c?.feedback?.hitArea||"";
     const riskReduced=c?.feedback?.riskReduced||c?.riskReduced||"";
     const deviationResult=(c?.feedback?.deviationResult||c?.deviationResult||"").trim();
     const calibration=c?.feedback?.calibration||c?.calibration||"";
-    const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(c?.feedback?.hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration);
+    const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration);
     if(hasFeedback)stats.feedbackCount+=1;
     if((c?.afterAction||c?.feedback?.afterAction||"").trim())stats.actionCount+=1;
     if(deviationResult)stats.deviationCount+=1;
     if(calibration){stats.calibrationCount+=1; incrementBucket(stats.byCalibration,calibrationLabel(calibration),accuracy);}
     if(verifiedSymbol){stats.verifiedSymbolCount+=1; incrementBucket(stats.byVerifiedSymbol,verifiedSymbol,accuracy);}
+    if(verifiedSymbol&&hitArea){stats.symbolHitPairCount+=1; incrementBucket(stats.bySymbolHitArea,symbolHitKey(verifiedSymbol,hitArea),accuracy);}
     if(riskReduced){stats.riskReducedCount+=1; if(["yes","partial"].includes(riskReduced))stats.riskReducedPositive+=1; incrementBucket(stats.byRiskReduced,riskReducedLabel(riskReduced),accuracy);}
     incrementBucket(stats.byQtype,c?.qtype||c?.problemDiagnosis?.suggestedQtype||"未分類",accuracy);
-    incrementBucket(stats.byHitArea,c?.feedback?.hitArea||"未分類",accuracy);
+    incrementBucket(stats.byHitArea,hitArea||"未分類",accuracy);
     if(accuracy!==null){
       stats.accuracyCount+=1; stats.accuracySum+=accuracy;
       if(accuracy<=2)stats.lowAccuracy+=1;
@@ -1617,6 +1622,7 @@ function calibrationHints(stats){
   if(stats.lowAccuracy>0)hints.push(`已有 ${stats.lowAccuracy} 筆 2 星以下，建議回看題目是否問得太大、鎖宮是否選錯，或行動建議是否太積極。`);
   if(stats.actionCount>0)hints.push(`已有 ${stats.actionCount} 筆填了是否照建議做，可用來分辨「判斷不準」和「行動未照做」兩種情況。`);
   if(stats.verifiedSymbolCount>0)hints.push(`已有 ${stats.verifiedSymbolCount} 筆標註哪個象應驗，之後可用來校準「象落在哪個現實事件」。`);
+  if(stats.symbolHitPairCount>0)hints.push(`已有 ${stats.symbolHitPairCount} 筆同時標註應驗象與應事分類，可開始觀察「哪個象常應在哪類事」。`);
   if(stats.riskReducedCount>0)hints.push(`已有 ${stats.riskReducedCount} 筆風險降級回饋，這會比單看吉凶更接近決策輔助。`);
   if(stats.deviationCount>0)hints.push(`已有 ${stats.deviationCount} 筆記錄偏離建議後結果，可分辨「沒照做」和「判斷本身需修正」。`);
   if(stats.calibrationCount>0)hints.push(`已有 ${stats.calibrationCount} 筆校準結論，能追蹤哪些地方要從吉凶改成風險降級。`);
@@ -1708,6 +1714,7 @@ function renderCaseStats(allCases=loadCases()){
     <p><strong>題型分布</strong>${renderBucketList(rankedBuckets(stats.byQtype,5))}</p>
     <p><strong>應事分類</strong>${renderBucketList(rankedBuckets(stats.byHitArea,5))}</p>
     <p><strong>應驗符號</strong>${renderBucketList(rankedBuckets(stats.byVerifiedSymbol,5))}</p>
+    <p><strong>符號落點</strong>${renderBucketList(rankedBuckets(stats.bySymbolHitArea,5))}</p>
     <p><strong>風險降級</strong>${renderBucketList(rankedBuckets(stats.byRiskReduced,5))}</p>
     <p><strong>校準結論</strong>${renderBucketList(rankedBuckets(stats.byCalibration,5))}</p>
     <p><strong>高分常見依據</strong><span>${escapeHTML(topHigh)}</span></p>
@@ -1856,7 +1863,7 @@ function testCaseStatsAggregation(){
     {qtype:"感情",outcome:"有回覆",afterAction:"有照做",feedback:{accuracy:"4",hitArea:"感情",verifiedSymbol:"空亡應在延遲",riskReduced:"yes",calibration:"accurate"},scoreBreakdown:{ruleTrace:["生門 +10","六合 +8"]}},
     {qtype:"感情",outcome:"不準",feedback:{accuracy:"2",hitArea:"感情",verifiedSymbol:"驚門應在口舌",riskReduced:"no",deviationResult:"沒有照建議，口舌放大",calibration:"downgrade"},scoreBreakdown:{ruleTrace:["空亡 pending"]}}
   ]);
-  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.verifiedSymbolCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&stats.deviationCount===1&&stats.calibrationCount===2&&stats.byCalibration.get("需改成風險降級")?.count===1&&stats.milestone.next===10&&stats.milestone.remaining===8&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1;
+  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.verifiedSymbolCount===2&&stats.symbolHitPairCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&stats.deviationCount===1&&stats.calibrationCount===2&&stats.byCalibration.get("需改成風險降級")?.count===1&&stats.milestone.next===10&&stats.milestone.remaining===8&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1&&stats.bySymbolHitArea.get("驚門應在口舌 → 感情")?.count===1;
   console.assert(ok,"V5: case stats aggregation should count feedback, accuracy, actions and qtype buckets.");
   return ok;
 }
