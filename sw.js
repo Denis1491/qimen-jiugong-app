@@ -1,12 +1,13 @@
-const CACHE_NAME = "qimen-jiugong-v5-0-decision-29";
+const CACHE_NAME = "qimen-jiugong-v5-0-decision-30";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=5.0-decision-29",
-  "./engine.js?v=5.0-decision-29",
-  "./qimen_soul_copy_bank.js?v=5.0-decision-29",
-  "./app.js?v=5.0-decision-29",
-  "./manifest.webmanifest?v=5.0-decision-29",
+  "./style.css?v=5.0-decision-30",
+  "./engine.js?v=5.0-decision-30",
+  "./qimen_soul_copy_bank.js?v=5.0-decision-30",
+  "./app.js?v=5.0-decision-30",
+  "./manifest.webmanifest?v=5.0-decision-30",
+  "./sample-data/qimen_v5_100_synthetic_cases.json?v=5.0-decision-30",
   "./rules/rules.json",
   "./rules/lock-palace.json",
   "./rules/scoring.json",

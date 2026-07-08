@@ -12,8 +12,10 @@ const html = read("index.html");
 const style = read("style.css");
 const engine = read("engine.js");
 const app = read("app.js");
+const sw = read("sw.js");
 const copyBank = read("qimen_soul_copy_bank.js");
 const manifest = json("manifest.webmanifest");
+const syntheticCases = json("sample-data/qimen_v5_100_synthetic_cases.json");
 const lock = json("rules/lock-palace.json");
 const scoring = json("rules/scoring.json");
 const qtype = json("rules/qtype-rules.json");
@@ -56,9 +58,10 @@ assert(html.includes("copyFilteredCaseReviewChecklist"), "filtered case review c
 assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary copy button is missing");
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("exportFilteredCasesCsv"), "filtered case review CSV export button is missing");
+assert(html.includes("qimen_v5_100_synthetic_cases.json"), "synthetic 100-case download is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-29"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-30"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -163,6 +166,9 @@ assert(style.includes(".case-completion"), "case completion styles are missing")
 assert(copyBank.includes("window.QIMEN_COPY_BANK"), "copy bank must expose window.QIMEN_COPY_BANK");
 assert(engine.includes("QIMEN_RULE_VERSION"), "engine.js must expose rule version");
 assert(engine.includes("QIMEN_RULE_FILES"), "engine.js must expose rule file index");
+assert(sw.includes("qimen-jiugong-v5-0-decision-30"), "service worker cache name should be updated");
+assert(sw.includes("app.js?v=5.0-decision-30"), "service worker app asset version should be updated");
+assert(sw.includes("sample-data/qimen_v5_100_synthetic_cases.json?v=5.0-decision-30"), "service worker should cache synthetic case sample data");
 
 assert(lock.version === "lock-palace.v5.0", "lock rule version mismatch");
 assert(lock.mapping["5"] === 2, "lock mapping for 5 should remain internal 2");
@@ -174,5 +180,14 @@ assert(qtype.types["工作"].applyWeight === true, "qtype weights should be acti
 assert(index.files.includes("scoring.json"), "rules index must include scoring.json");
 assert(manifest.display === "standalone", "manifest display should be standalone");
 assert(manifest.name === "九宮奇門", "manifest app name should be 九宮奇門");
+assert(syntheticCases.version === "5.0", "synthetic case payload version should be 5.0");
+assert(syntheticCases.dataSource === "synthetic", "synthetic case payload should be labeled synthetic");
+assert(syntheticCases.notice.includes("不可當成真實案例"), "synthetic case payload should warn against real calibration use");
+assert(Array.isArray(syntheticCases.cases) && syntheticCases.cases.length === 100, "synthetic case payload should contain 100 cases");
+assert(syntheticCases.cases.every(c => c.synthetic === true && c.dataSource === "synthetic"), "every synthetic case should be labeled synthetic");
+assert(syntheticCases.cases.some(c => c.decisionOptions && c.compare), "synthetic cases should include comparison cases");
+assert(syntheticCases.cases.some(c => !c.feedback || !c.feedback.accuracy), "synthetic cases should include unreviewed cases");
+assert(syntheticCases.cases.some(c => Number(c.feedback?.accuracy) <= 2), "synthetic cases should include low-accuracy examples");
+assert(syntheticCases.cases.some(c => c.feedback?.compareHit === "mixed" || c.feedback?.compareHit === "none"), "synthetic cases should include compare mismatch examples");
 
 console.log("V5.0 static checks passed.");
