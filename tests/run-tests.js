@@ -46,12 +46,16 @@ assert(html.includes("caseCompareChosen"), "compare chosen feedback field is mis
 assert(html.includes("caseCompareHit"), "compare hit feedback field is missing");
 assert(html.includes("caseCompareNote"), "compare note feedback field is missing");
 assert(html.includes("caseReviewFilter"), "case review quality filter is missing");
+assert(html.includes("low-accuracy"), "low-accuracy review filter is missing");
+assert(html.includes("compare-incomplete"), "compare incomplete review filter is missing");
+assert(html.includes("compare-chosen-mismatch"), "compare chosen mismatch review filter is missing");
+assert(html.includes("compare-hit-mismatch"), "compare hit mismatch review filter is missing");
 assert(html.includes("copyCaseReviewChecklist"), "case review checklist copy button is missing");
 assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary copy button is missing");
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-25"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-26"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -90,6 +94,8 @@ assert(app.includes("compareChosen"), "case compare chosen feedback is missing")
 assert(app.includes("compareHit"), "case compare hit feedback is missing");
 assert(app.includes("compareOptionLabel"), "case compare option label helper is missing");
 assert(app.includes("compareMatchLabel"), "case compare match label helper is missing");
+assert(app.includes("compareChosenMismatch"), "case compare chosen mismatch helper is missing");
+assert(app.includes("compareHitMismatch"), "case compare hit mismatch helper is missing");
 assert(app.includes("compareHitMatchRate"), "case compare recommendation hit-rate is missing");
 assert(app.includes("deviationResult"), "case deviation result feedback is missing");
 assert(app.includes("calibration"), "case calibration feedback is missing");

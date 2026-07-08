@@ -1,4 +1,4 @@
-﻿// ===== 基本常數 =====
+// ===== 基本常數 =====
 const STEMS = "甲乙丙丁戊己庚辛壬癸".split("");
 const BRANCHES = "子丑寅卯辰巳午未申酉戌亥".split("");
 const GZ60 = Array.from({length:60}, (_,i)=>STEMS[i%10]+BRANCHES[i%12]);
@@ -688,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-25").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-26").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1740,6 +1740,33 @@ function compareMatchLabel(winner,value,type){
   if(value==="none")return type==="chosen"?"未採用任何選項":"都未應驗";
   return value===winner?"推薦命中":"推薦未命中";
 }
+function isCompareCase(c){
+  return Boolean(c?.decisionOptions||c?.compare);
+}
+function compareWinnerFromCase(c){
+  return c?.compare?.winner||"";
+}
+function compareChosenFromCase(c){
+  return c?.feedback?.compareChosen||c?.compareChosen||"";
+}
+function compareHitFromCase(c){
+  return c?.feedback?.compareHit||c?.compareHit||"";
+}
+function isSpecificCompareOption(value){
+  return ["A","B","C","D"].includes(value);
+}
+function compareChosenMismatch(c){
+  const winner=compareWinnerFromCase(c);
+  const value=compareChosenFromCase(c);
+  if(!winner||!value||value==="unclear")return false;
+  return value==="none"||(isSpecificCompareOption(value)&&value!==winner);
+}
+function compareHitMismatch(c){
+  const winner=compareWinnerFromCase(c);
+  const value=compareHitFromCase(c);
+  if(!winner||!value||value==="unclear")return false;
+  return value==="none"||value==="mixed"||(isSpecificCompareOption(value)&&value!==winner);
+}
 function calibrationLabel(value){
   return {accurate:"判斷準",delayed:"只是延遲","wrong-area":"應事不同","too-strong":"說得太死",downgrade:"需改成風險降級",unclear:"仍待觀察"}[value]||"未回填";
 }
@@ -1857,7 +1884,7 @@ function renderBucketList(items){
 }
 function caseCompletion(c){
   const fb=c?.feedback||{};
-  const isCompare=Boolean(c?.decisionOptions||c?.compare);
+  const isCompare=isCompareCase(c);
   const checks=[
     ["實際結果",Boolean((c?.outcome||fb.outcome||"").trim())],
     ["準確度",caseAccuracyValue(c)!==null],
@@ -1883,6 +1910,10 @@ function caseMatchesReviewFilter(c,filter){
   if(filter==="unreviewed")return completion.done===0;
   if(filter==="incomplete")return completion.done>0&&completion.done<completion.total;
   if(filter==="complete")return completion.done===completion.total;
+  if(filter==="low-accuracy")return (caseAccuracyValue(c)??99)<=2;
+  if(filter==="compare-incomplete")return isCompareCase(c)&&completion.done<completion.total;
+  if(filter==="compare-chosen-mismatch")return compareChosenMismatch(c);
+  if(filter==="compare-hit-mismatch")return compareHitMismatch(c);
   return true;
 }
 function caseProgressHTML(milestone){
@@ -1901,7 +1932,9 @@ function caseTrainingTask(cases,stats=caseStatsFromCases(cases)){
   if(stats.feedbackCount<10)return {title:"累積到 10 筆回驗",detail:`目前已有 ${stats.feedbackCount} 筆回驗，先做到 10 筆，只看初步偏差，不急著改規則。`,filter:"all"};
   if(stats.verifiedSymbolCount<stats.feedbackCount)return {title:"補哪個象應驗",detail:"有些回驗尚未標註應驗象。補上空亡、玄武、驚門等現實落點，才知道哪個象常應在哪類事件。",filter:"incomplete"};
   if(stats.riskReducedCount<stats.feedbackCount)return {title:"補風險是否降低",detail:"有些案例尚未標註風險是否降低。這會幫你分辨 App 是在算吉凶，還是真的有幫人把事情降風險。",filter:"incomplete"};
-  if(stats.lowAccuracy>0&&stats.calibrationCount<stats.feedbackCount)return {title:"回看低分案例",detail:`已有 ${stats.lowAccuracy} 筆 2 星以下。優先判斷是問法太散、鎖宮不準、應事不同，還是文案說得太死。`,filter:"all"};
+  if(stats.lowAccuracy>0&&stats.calibrationCount<stats.feedbackCount)return {title:"回看低分案例",detail:`已有 ${stats.lowAccuracy} 筆 2 星以下。優先判斷是問法太散、鎖宮不準、應事不同，還是文案說得太死。`,filter:"low-accuracy"};
+  if(stats.compareChosenCount>=3&&stats.compareChosenMatchRate!==null&&stats.compareChosenMatchRate<60)return {title:"回看推薦未採用",detail:`比較題推薦採用率目前 ${stats.compareChosenMatchRate}%。先看是使用者偏好不同、成本不同，還是 App 推薦理由不夠可執行。`,filter:"compare-chosen-mismatch"};
+  if(stats.compareHitCount>=3&&stats.compareHitMatchRate!==null&&stats.compareHitMatchRate<60)return {title:"回看推薦未應驗",detail:`比較題推薦應驗率目前 ${stats.compareHitMatchRate}%。優先檢查實際應驗選項、混合應驗與題目條件是否變動。`,filter:"compare-hit-mismatch"};
   if(stats.feedbackCount<30)return {title:"擴到 30 筆看題型穩定度",detail:"10 筆後可以看初步偏差；30 筆後再觀察哪些題型準、哪些題型常誤判。",filter:"all"};
   if(stats.feedbackCount<100)return {title:"穩定累積到 100 筆",detail:"現在重點是持續回驗，不用急著大改規則；每筆都補完整，100 筆後再做正式校準。",filter:"all"};
   return {title:"整理 100 筆校準結論",detail:"100 筆回驗已完成，可以開始整理哪些象最常應驗、哪些題型最難判、哪些地方要從吉凶改成風險降級。",filter:"complete"};
@@ -2213,9 +2246,13 @@ function testCompareRecommendationMatchStats(){
 function testCaseReviewFilter(){
   const blank={title:"未回驗"};
   const partial={outcome:"有結果",feedback:{accuracy:"4"}};
+  const low={outcome:"失準",feedback:{accuracy:"2",hitArea:"合作"}};
   const complete={outcome:"有結果",afterAction:"有照做",verifiedSymbol:"驚門",riskReduced:"yes",deviationResult:"無",calibration:"accurate",feedback:{accuracy:"4",hitArea:"口舌"}};
-  const ok=caseMatchesReviewFilter(blank,"unreviewed")&&caseMatchesReviewFilter(partial,"incomplete")&&caseMatchesReviewFilter(complete,"complete")&&!caseMatchesReviewFilter(partial,"complete");
-  console.assert(ok,"V5: review filters should separate unreviewed, incomplete and complete cases.");
+  const comparePartial={decisionOptions:[{side:"A"},{side:"B"}],outcome:"有結果",feedback:{accuracy:"4",compareChosen:"A"}};
+  const compareChosenMiss={compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{compareChosen:"A"}};
+  const compareHitMiss={compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{compareHit:"mixed"}};
+  const ok=caseMatchesReviewFilter(blank,"unreviewed")&&caseMatchesReviewFilter(partial,"incomplete")&&caseMatchesReviewFilter(complete,"complete")&&!caseMatchesReviewFilter(partial,"complete")&&caseMatchesReviewFilter(low,"low-accuracy")&&caseMatchesReviewFilter(comparePartial,"compare-incomplete")&&caseMatchesReviewFilter(compareChosenMiss,"compare-chosen-mismatch")&&caseMatchesReviewFilter(compareHitMiss,"compare-hit-mismatch")&&!caseMatchesReviewFilter({feedback:{accuracy:"3"}},"low-accuracy");
+  console.assert(ok,"V5: review filters should separate unreviewed, incomplete, low-score and compare mismatch cases.");
   return ok;
 }
 function testCaseReviewChecklist(){
