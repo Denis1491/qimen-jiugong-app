@@ -1,5 +1,5 @@
 {
-  "version": "lock-palace.v4.3",
+  "version": "lock-palace.v5.0",
   "status": "user-provided",
   "description": "九宮奇門報數鎖單宮。介面只讓使用者選 1-9，不顯示內部轉換說明。",
   "mapping": {

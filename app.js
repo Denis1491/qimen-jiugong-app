@@ -58,11 +58,11 @@ const LUNAR_INFO = [
 // ===== 報數鎖單宮與紅綠規則：依使用者提供規則校準 =====
 const LOCK_NUM_TO_PALACE_NUM = {1:1,2:2,3:3,4:4,5:2,6:6,7:7,8:8,9:9};
 const DIRECT_DENY = {
-  god:new Set(["白虎"]),
-  star:new Set(["天蓬","天芮"]),
-  door:new Set(["死門"]),
-  stem:new Set(["庚"]),
-  flag:new Set(["空"])
+  god:new Set([]),
+  star:new Set([]),
+  door:new Set([]),
+  stem:new Set([]),
+  flag:new Set([])
 };
 const SCORE = {
   door:{"開門":40,"休門":40,"生門":40,"死門":-100},
@@ -72,13 +72,13 @@ const SCORE = {
   flag:{"空":-100}
 };
 const RULE_VERSION = window.QIMEN_RULE_VERSION || {
-  app:"4.3",
-  lock:"lock-palace.v4.3",
-  scoring:"scoring.v4.3",
-  qtype:"qtype-rules.v4.3 待確認",
-  fengshui:"fengshui.v4.3"
+  app:"5.0",
+  lock:"lock-palace.v5.0",
+  scoring:"scoring.v5.0",
+  qtype:"qtype-rules.v5.0 待校準",
+  fengshui:"fengshui.v5.0"
 };
-const CASE_STORAGE_KEY = window.QIMEN_CASE_STORAGE_KEY || "qimen-jiugong-cases-v4";
+const CASE_STORAGE_KEY = window.QIMEN_CASE_STORAGE_KEY || "qimen-jiugong-cases-v5";
 const DOOR_ADVICE = {
   "開門":"適合開啟、見客、工作面試、談機會、做公開行動。",
   "休門":"適合休整、談和、修復關係、養精蓄銳、低調處理。",
@@ -102,6 +102,16 @@ const QTYPE_RULES = {
   "風水": {tone:"方位調整",description:"找今日可啟動方、宜靜方、避動方。",speech:"在不穩方位少講電話、少爭辯；重要訊息可面向可用方整理後再發。",finance:"財務文件、報價、合約可在啟動方整理，不在避動方拍板。",work:"工作空間先清潔、降噪、補光；不要做誇張擺設。",health:"風水只作環境調整建議，不取代健康與安全判斷。"},
   "決策": {tone:"做不做與何時做",description:"看是否適合立刻行動、延後、保守、談判或放棄。",speech:"決策溝通先講目標、限制、可逆性與最壞情境，不被一時氣氛推著走。",finance:"涉及錢的決策先算損失上限，保留退路，不一次賭到底。",work:"先做最小可逆的一步，用結果驗證，再決定要不要放大。",health:"身心狀態不穩時避免重大決策，先休息或延後。"}
 };
+const QTYPE_WEIGHTS = {
+  "今日運勢": {focus:["日干","時干","值符","值使","生門","開門"],bonus:{"生門":18,"開門":15,"休門":12,"六合":10,"值符":10},penalty:{"驚門":-12,"傷門":-12,"死門":-18,"白虎":-18,"空":-10}},
+  "工作": {focus:["開門","時干","值使","景門","日干"],bonus:{"開門":28,"生門":14,"景門":10,"天心":10,"值符":12},penalty:{"死門":-25,"杜門":-16,"驚門":-14,"白虎":-20,"玄武":-12}},
+  "財運": {focus:["生門","戊","六合","太陰","日干"],bonus:{"生門":30,"戊":12,"六合":16,"太陰":14,"開門":10},penalty:{"空":-18,"玄武":-14,"驚門":-12,"死門":-22,"白虎":-18}},
+  "感情": {focus:["六合","乙","庚","兌宮","日干","時干"],bonus:{"六合":26,"太陰":16,"休門":12,"乙":10},penalty:{"白虎":-24,"玄武":-18,"螣蛇":-14,"驚門":-14,"傷門":-18,"庚":-12}},
+  "合作": {focus:["六合","生門","開門","時干","日干"],bonus:{"六合":24,"生門":18,"開門":16,"太陰":12,"值符":10},penalty:{"玄武":-18,"白虎":-18,"杜門":-12,"空":-14,"死門":-20}},
+  "健康": {focus:["天芮","死門","傷門","白虎","日干"],bonus:{"休門":18,"天心":12,"九地":8},penalty:{"天芮":-28,"死門":-24,"傷門":-20,"白虎":-24,"驚門":-10}},
+  "風水": {focus:["生門","開門","休門","死門","驚門","白虎","空"],bonus:{"生門":24,"開門":20,"休門":16,"六合":10,"太陰":8},penalty:{"死門":-24,"白虎":-24,"天芮":-18,"驚門":-12,"空":-14,"迫":-12,"刑":-12}},
+  "決策": {focus:["日干","時干","開門","生門","值符","值使"],bonus:{"開門":20,"生門":18,"值符":12,"天心":12,"六合":10},penalty:{"空":-16,"死門":-20,"玄武":-14,"白虎":-18,"杜門":-12}}
+};
 
 let chart = null;
 let selectedNum = null;
@@ -110,7 +120,8 @@ let currentView = "ask";
 let inquiryLocked = false;
 let activeCaseId = null;
 let activeCompareSide = "A";
-let compareSelections = {A:null,B:null};
+const COMPARE_SIDES = ["A","B","C","D"];
+let compareSelections = {A:null,B:null,C:null,D:null};
 
 // ===== 工具函數 =====
 function pad(n){return String(n).padStart(2,"0")}
@@ -119,6 +130,51 @@ function unique(arr){return [...new Set(arr.filter(Boolean))]}
 function escapeHTML(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]))}
 function parseDT(){const v=document.getElementById("dt").value;if(!v)return null;const [date,time]=v.split("T");const [y,m,d]=date.split("-").map(Number);const [hh,mm]=time.split(":").map(Number);return {y,m,d,hh,mm}}
 function questionText(){return (document.getElementById("questionText")?.value||"").trim()}
+function keywordHit(text,words){return words.some(w=>text.includes(w))}
+function diagnoseQuestion(text){
+  const q=String(text||"").trim();
+  const normalized=q.replace(/\s+/g,"");
+  if(!normalized)return {suggestedQtype:"今日運勢",confidence:"低",decisionIntent:"尚未輸入問題",riskTypes:[],followUps:["先把問題寫成一件具體事情。"],reason:"尚未輸入問題，先不做題型判斷。"};
+  const rules=[
+    {qtype:"感情",words:["他","她","對方","感情","曖昧","復合","分手","聯絡","找他","找她","道歉","求和","喜歡","關係"],risk:["口舌刺激","情緒升高","承諾未明"]},
+    {qtype:"工作",words:["工作","面試","主管","同事","客戶","履歷","職場","離職","加薪","專案","任務","簡報"],risk:["流程卡點","溝通成本","責任邊界"]},
+    {qtype:"財運",words:["錢","財","投資","收款","付款","價格","報價","合約","借錢","貸款","成交","收入"],risk:["條件未實","損失上限","口頭承諾"]},
+    {qtype:"合作",words:["合作","合夥","簽約","分潤","夥伴","一起做","共同","代理"],risk:["分工不清","退出機制","資訊不透明"]},
+    {qtype:"健康",words:["健康","生病","不舒服","睡眠","壓力","醫院","檢查","症狀","身體"],risk:["身心負荷","延誤檢查","過度解讀"]},
+    {qtype:"風水",words:["方位","風水","房間","辦公室","座位","搬家","修繕","擺設","家裡"],risk:["環境干擾","大動作風險","安全判斷"]},
+    {qtype:"決策",words:["要不要","是否","可不可以","該不該","選哪個","怎麼選","決定","方案","A","B"],risk:["可逆性不足","資訊不完整","成本未估"]}
+  ];
+  const scored=rules.map(rule=>({rule,score:rule.words.filter(w=>normalized.includes(w)).length})).sort((a,b)=>b.score-a.score);
+  const top=scored[0];
+  const suggestedQtype=top.score>0?top.rule.qtype:"今日運勢";
+  const riskTypes=unique((top.score>0?top.rule.risk:[]).concat(
+    keywordHit(normalized,["空","沒回","未定","還沒","不知道","等"]) ? ["條件未實"] : [],
+    keywordHit(normalized,["騙","隱瞞","不透明","怪怪","口頭"]) ? ["資訊不透明"] : [],
+    keywordHit(normalized,["吵","生氣","急","衝突","罵"]) ? ["口舌衝突"] : [],
+    keywordHit(normalized,["錢","投資","借","貸","付"]) ? ["財務風險"] : []
+  ));
+  const followUps=[];
+  if(!keywordHit(normalized,["今天","明天","這週","現在","何時","時間"]))followUps.push("時間窗是今天、這週，還是等對方回覆後？");
+  if(!keywordHit(normalized,["A","B","選項","方案","要不要","是否","可不可以"]))followUps.push("能不能拆成至少兩個可選行動？例如主動聯絡 / 等明天 / 先傳短訊息。");
+  if(["財運","合作","工作"].includes(suggestedQtype))followUps.push("現實條件有沒有文件、金額、期限、責任邊界？");
+  if(suggestedQtype==="感情")followUps.push("你想達成的是求和、確認態度、道歉，還是談條件？");
+  if(suggestedQtype==="健康")followUps.push("若有明顯症狀，請先以正式醫療檢查為準。");
+  const decisionIntent=keywordHit(normalized,["要不要","是否","可不可以","該不該"]) ? "是/否決策" : keywordHit(normalized,["選","A","B","方案"]) ? "選項比較" : "狀態判斷";
+  return {suggestedQtype,confidence:top.score>=2?"中高":top.score===1?"中":"低",decisionIntent,riskTypes,followUps:unique(followUps).slice(0,4),reason:top.score>0?`命中關鍵詞：${top.rule.words.filter(w=>normalized.includes(w)).join("、")}`:"問題較泛，暫以今日運勢承接。"};
+}
+function renderQuestionDiagnosis(){
+  const box=document.getElementById("questionDiagnosis"); if(!box)return;
+  const d=diagnoseQuestion(questionText());
+  box.innerHTML=`<div><strong>問題診斷</strong><span>建議用途：${escapeHTML(d.suggestedQtype)}｜信心：${escapeHTML(d.confidence)}｜問題型態：${escapeHTML(d.decisionIntent)}</span></div>
+  <div class="diagnosis-tags">${[d.reason].concat(d.riskTypes.map(x=>`風險：${x}`)).map(x=>`<span class="tab">${escapeHTML(x)}</span>`).join("")}</div>
+  <div><span>建議追問：${escapeHTML(d.followUps.join("；")||"問題已足夠明確，可以排盤。")}</span></div>`;
+}
+function applyDiagnosisQtype(){
+  const q=document.getElementById("qtype"); if(!q||inquiryLocked)return;
+  q.value=diagnoseQuestion(questionText()).suggestedQtype;
+  renderQuestionDiagnosis();
+  if(chart&&!inquiryLocked){chart.settings.qtype=q.value; chart.problemDiagnosis=diagnoseQuestion(questionText()); renderAll();}
+}
 function inquiryMode(){return document.getElementById("inquiryMode")?.value||"formal"}
 function isFormalInquiry(){return inquiryMode()==="formal"}
 function selectionMode(){return document.getElementById("selectionMode")?.value||"single"}
@@ -126,13 +182,26 @@ function isCompareMode(){return selectionMode()==="compare"}
 function isCompareChart(){return chart?.settings?.selectionMode==="compare"}
 function compareOptionName(side){return (document.getElementById(`option${side}Name`)?.value||`選項 ${side}`).trim()||`選項 ${side}`}
 function compareNumber(side){return Number(compareSelections[side]||0)||null}
+function blankCompareSelections(){return Object.fromEntries(COMPARE_SIDES.map(side=>[side,null]))}
+function compareSides(){return COMPARE_SIDES}
+function compareOptionFromState(side,opts={}){
+  return {name:opts[side]?.name||compareOptionName(side),num:Number(opts[side]?.num||compareSelections[side]||0)||null};
+}
+function filledCompareOptions(source){
+  const opts=source||compareOptions();
+  return compareSides().map(side=>({side,...opts[side]})).filter(opt=>opt.num);
+}
+function advanceCompareSide(){
+  const next=compareSides().find(side=>!compareSelections[side]);
+  if(next)activeCompareSide=next;
+}
 function setSelectionMode(mode){const el=document.getElementById("selectionMode"); if(el)el.value=mode||"single"}
 function updateInquiryHint(){
   const hint=document.getElementById("inquiryHint"); if(!hint)return;
   if(isCompareMode()){
     hint.textContent=isFormalInquiry()
-      ? "複選比較：先寫同一個問題與 A/B 選項，再分別替 A、B 憑直覺選數。排盤後會比較兩個選項。"
-      : "複選比較學習模式：可替 A、B 各選一數，排盤後比較兩個宮位的得失。";
+      ? "決策比較：先寫同一個問題與 A-D 選項，至少替兩個選項憑直覺選數。排盤後會比較可逆性、成本、風險與驗證點。"
+      : "決策比較學習模式：可替 A-D 選項選數，至少兩個選項即可比較宮位、成本與風險。";
     return;
   }
   hint.textContent=isFormalInquiry()
@@ -141,16 +210,17 @@ function updateInquiryHint(){
 }
 function updateInquiryControls(){
   const locked=!!inquiryLocked;
-  ["questionText","qtype","inquiryMode","selectionMode","optionAName","optionBName"].forEach(id=>{const el=document.getElementById(id); if(el)el.disabled=locked;});
+  ["questionText","qtype","inquiryMode","selectionMode"].concat(compareSides().map(side=>`option${side}Name`)).forEach(id=>{const el=document.getElementById(id); if(el)el.disabled=locked;});
   const resetAsk=document.getElementById("resetInquiryAsk"); if(resetAsk)resetAsk.disabled=false;
   const resetChart=document.getElementById("resetInquiryChart"); if(resetChart)resetChart.disabled=false;
   updateCompareUI();
 }
 function updateCompareUI(){
   const panel=document.getElementById("comparePanel"); if(panel)panel.hidden=!isCompareMode();
-  const a=document.getElementById("compareANum"), b=document.getElementById("compareBNum");
-  if(a)a.textContent=compareSelections.A||"未選";
-  if(b)b.textContent=compareSelections.B||"未選";
+  compareSides().forEach(side=>{
+    const el=document.getElementById(`compare${side}Num`);
+    if(el)el.textContent=compareSelections[side]||"未選";
+  });
   document.querySelectorAll(".compare-side").forEach(btn=>{
     btn.classList.toggle("active",btn.dataset.side===activeCompareSide);
     btn.disabled=!!inquiryLocked;
@@ -211,9 +281,11 @@ function buildChart(){
     if(isFormalInquiry()&&!questionText()){alert("正式問事請先輸入問題。");return false}
     const compareMode=isCompareMode();
     if(compareMode){
-      if(!compareSelections.A||!compareSelections.B){alert("複選比較請先替 A、B 各選一個數字。");return false}
-      if(compareSelections.A===compareSelections.B){alert("A、B 請選不同數字，才有比較意義。");return false}
-      selectedNum=compareSelections.A;
+      const filled=filledCompareOptions();
+      const distinctPalaces=unique(filled.map(opt=>lockedPalaceNumber(opt.num)));
+      if(filled.length<2){alert("決策比較請至少替兩個選項選數字。");return false}
+      if(distinctPalaces.length<2){alert("比較選項請至少鎖到兩個不同宮位，才有比較意義。");return false}
+      selectedNum=filled[0].num;
     }else if(!selectedNum){alert("請先選 1-9 一個數字");return false}
     const ziChange=document.getElementById("ziChange").value==="true";
     const yGZ=yearGZ(p); const yStem=stemOf(yGZ), yBranch=branchOf(yGZ);
@@ -237,7 +309,7 @@ function buildChart(){
       return {key,number:PALACE_NUM[key],god:godMap[key]||"",star:starMap[key]||"",door,top,bottom,flags:unique(flags)};
     });
     chart={
-      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, question:questionText(), settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange,inquiryMode:inquiryMode(),selectionMode:compareMode?"compare":"single",compareOptions:compareMode?{A:{name:compareOptionName("A"),num:compareSelections.A},B:{name:compareOptionName("B"),num:compareSelections.B}}:null,lockedFormal:isFormalInquiry()},
+      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, question:questionText(), problemDiagnosis:diagnoseQuestion(questionText()), settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange,inquiryMode:inquiryMode(),selectionMode:compareMode?"compare":"single",compareOptions:compareMode?compareOptions():null,lockedFormal:isFormalInquiry()},
       meta:{solar:fmtDT(p),lunar:lunarText(lunar),yearGZ:yGZ,yearStem:yStem,yearBranch:yBranch,monthStem:mInfo.stem,monthBranch:mInfo.branch,dayStem:stemOf(dGZ),dayBranch:branchOf(dGZ),hourStem:stemOf(hGZ),hourBranch:branchOf(hGZ),monthGZ:mInfo.stem+mInfo.branch,dayGZ:dGZ,hourGZ:hGZ,ju:`陰${CN_NUM[ju.num]}局`,juNum:ju.num,juFormula:ju.formula,xunshou:`${xun.start}旬`,futou:xun.hidden,kongwang:xun.kong,yima,zhifu,zhishi,xunPalace,timePalace,starOffset,doorOffset:dOff},
       palaces
     };
@@ -251,27 +323,6 @@ function buildChart(){
 function contribution(type,sym){return (SCORE[type]&&SCORE[type][sym])||0}
 function lockedPalaceNumber(n){return LOCK_NUM_TO_PALACE_NUM[Number(n)]||Number(n)}
 function denyReason(type,sym){return {"god":"大凶八神","star":"大凶九星","door":"大凶八門","stem":"大凶天干","flag":"大凶特殊象"}[type] + `：${sym}`}
-function scorePalace(p,qtype){
-  if(!p||p.isCenter)return {score:0,reasons:[{label:"中宮不用",value:0,text:"中宮不直接作鎖單宮判斷。"}],grade:grade(0)};
-  return scorePalaceRaw(p,qtype);
-}
-function scorePalaceRaw(p,qtype){
-  let score=0; const reasons=[]; const deniers=[];
-  function deny(type,sym,text){if(sym&&DIRECT_DENY[type]&&DIRECT_DENY[type].has(sym)){deniers.push({label:denyReason(type,sym),value:0,text})}}
-  function add(type,label,sym,text){const value=contribution(type,sym); if(value>0){score+=value; reasons.push({label,value,text})}}
-  deny("god",p.god,`${p.god}：今天這股氣比較硬，容易起衝突，不適合硬推。`);
-  deny("star",p.star,`${p.star}：事情暗藏麻煩，先查清楚再說。`);
-  deny("door",p.door,`${p.door}：這件事現在像卡住或收尾，不適合開新局。`);
-  p.top.concat(p.bottom).forEach(st=>deny("stem",st,`${st}：遇到阻力與壓力，先不要重押。`));
-  p.flags.forEach(f=>deny("flag",f,flagText(f)));
-  if(deniers.length)return {score:0,reasons:deniers,denied:true,deniers,grade:{name:"直接否定",cls:"score-bad"}};
-  add("god",p.god,p.god,`${p.god}：有人事助力，可以借力使力。`);
-  add("star",p.star,p.star,`${p.star}：事情有可用的條件，值得整理後推進。`);
-  add("door",p.door,p.door,`${p.door}：路徑打得開，可以採取行動。`);
-  p.top.concat(p.bottom).forEach(st=>add("stem",st,st,`${st}：有機會、有資源，適合把條件談清楚。`));
-  score=clamp(Math.round(score),0,100); return {score,reasons,denied:false,deniers:[],grade:grade(score)};
-}
-function grade(score){if(score>=80)return {name:"大吉",cls:"score-good"}; if(score>=60)return {name:"主吉",cls:"score-good"}; if(score>0)return {name:"未達 60",cls:"score-bad"}; return {name:"不採用",cls:"score-bad"}}
 function doorMeaning(d){return {"開門":"開啟、事業、門路、機會。","休門":"休整、和解、貴人、修復。","生門":"財源、資源、生機、合作利益。","景門":"文書、曝光、名聲、說明。","杜門":"閉塞、保密、內部、卡點。","傷門":"衝突、損傷、急躁、破耗。","驚門":"口舌、驚擾、消息反覆。","死門":"停滯、結束、舊事、僵局。"}[d]||""}
 function starMeaning(s){return {"天心":"理性、醫藥、管理、方案。","天輔":"文教、輔助、貴人、專業。","天任":"穩定、承擔、慢成。","天英":"表現、名聲、靈感、火氣。","天沖":"行動、突發、衝勁。","天蓬":"風險、欲望、暗流。","天芮":"病符、問題、瑕疵。","天柱":"口舌、壓力、阻隔。"}[s]||""}
 function flagText(f){return {"空":"空亡：事情未實、等待填實，不宜重押。","馬":"驛馬：有移動、變化、外出與轉換象。","墓":"入墓：氣被收住，進展慢，宜先整理。","刑":"擊刑：內部衝突、卡住或自我糾結。","迫":"門迫：門克宮，行動方式壓迫環境，易出問題。","制":"門制：宮克門，環境壓住行動，進展受限。"}[f]||f}
@@ -295,8 +346,8 @@ function symbolBox(label,type,sym){return `<div class="symbol-box"><span>${label
 function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
 
 // ===== 渲染 =====
-function renderAll(){updateInquiryHint(); updateInquiryControls(); renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases();}
-function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途待確認`}
+function renderAll(){updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases();}
+function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途生效・待校準`}
 function setNote(t){document.getElementById("autoNote").textContent=t}
 function showView(view){
   currentView=view||"ask";
@@ -310,7 +361,7 @@ function chooseNumber(n){
   if(isCompareMode()){
     compareSelections[activeCompareSide]=n;
     selectedNum=n;
-    if(activeCompareSide==="A"&&!compareSelections.B)activeCompareSide="B";
+    advanceCompareSide();
     renderAll();
     return;
   }
@@ -331,8 +382,7 @@ function renderNums(){
   Array.from(pad.children).forEach((b,i)=>{
     const n=i+1; const marks=[];
     if(isCompareMode()){
-      if(compareSelections.A===n)marks.push("A");
-      if(compareSelections.B===n)marks.push("B");
+      compareSides().forEach(side=>{if(compareSelections[side]===n)marks.push(side)});
       b.innerHTML=`<span>${n}</span>${marks.length?`<em>${marks.join("/")}</em>`:""}`;
       b.classList.toggle("active",marks.length>0);
       b.classList.toggle("compare-a",compareSelections.A===n);
@@ -358,7 +408,7 @@ function selectPalaceNumber(n){
     const raw=Number(n);
     compareSelections[activeCompareSide]=raw;
     selectedNum=raw;
-    if(activeCompareSide==="A"&&!compareSelections.B)activeCompareSide="B";
+    advanceCompareSide();
     renderAll();
     return;
   }
@@ -366,11 +416,11 @@ function selectPalaceNumber(n){
 }
 function renderGrid(){const grid=document.getElementById("palaceGrid"); if(!chart){grid.innerHTML="<div class='palace center' style='grid-column:1/4'>請先輸入時間並開始排盤</div>"; return} const q=chart.settings.qtype; grid.innerHTML=chart.palaces.map(p=>{
   const cmp=isCompareChart()?chart.settings.compareOptions:null;
-  const aHit=cmp&&lockedPalaceNumber(cmp.A.num)===p.number, bHit=cmp&&lockedPalaceNumber(cmp.B.num)===p.number;
-  const sel=lockedPalaceNumber(selectedNum)===p.number||aHit||bHit; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮</strong><br><span class="score-pill score-mid">5</span></div></div>`}
+  const hitSides=cmp?filledCompareOptions(cmp).filter(opt=>lockedPalaceNumber(opt.num)===p.number).map(opt=>opt.side):[];
+  const sel=lockedPalaceNumber(selectedNum)===p.number||hitSides.length>0; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮</strong><br><span class="score-pill score-mid">5</span></div></div>`}
   const s=scorePalaceRaw(p,q); const sc=s.score; const bg=s.denied||sc<60?"bad-bg":"good-bg"; const scoreText=s.denied?"否":sc;
   return `<button type="button" class="palace ${bg} ${sel?"selected":""}" data-num="${p.number}" onclick="selectPalaceNumber(${p.number})" aria-label="鎖定${p.key}${p.number}宮">
-    ${aHit||bHit?`<span class="compare-palace-tag">${aHit?"A":""}${aHit&&bHit?"/":""}${bHit?"B":""}</span>`:""}
+    ${hitSides.length?`<span class="compare-palace-tag">${hitSides.join("/")}</span>`:""}
     <div class="palace-top"><span class="palace-id">${p.key}<small>${p.number}</small></span><span class="god ${classByScore("god",p.god)}">${symbolText("god",p.god)}</span></div>
     <div class="palace-mid"><span class="sym ${classByScore("star",p.star)}">${symbolText("star",p.star)}</span><span class="stems">${stemGroup(p.top,p.key)}</span></div>
     <div class="palace-bottom"><span class="sym ${classByScore("door",p.door)}">${symbolText("door",p.door)}</span><span class="stems muted-text">${stemGroup(p.bottom,p.key)}</span></div>
@@ -407,30 +457,6 @@ function renderLockedPanel(){
     </div>
     <div class="locked-summary"><strong>總斷</strong>${escapeHTML(summary.total)}</div>
   </div>`;
-}
-function renderResult(){
-  const metricLock=document.getElementById("metricLock"), metricScore=document.getElementById("metricScore");
-  if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; metricLock.textContent="未選數"; metricScore.textContent="—"; return}
-  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); metricLock.textContent=`${selectedNum}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"直接否定":s.score+"/100 "+s.grade.name}`;
-  document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${s.grade.name}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
-  document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">${p.key}${p.number}</span>`,`<span class="tab">${chart.settings.qtype}</span>`,`<span class="tab">${chart.meta.ju}</span>`].join("");
-  const summary = makeSummary(p,s);
-  document.getElementById("resultHeadline").textContent=`${s.denied?"先停一下":s.score>=60?"可以推進":"先保守"}｜${p.key}宮｜${summary.short}`;
-  document.getElementById("resultList").innerHTML=`<div class="item"><strong>大師斷語</strong>${escapeHTML(summary.total)}</div><div class="item action"><strong>今天怎麼做</strong>${escapeHTML(summary.action)}</div><div class="item action"><strong>先避開</strong>${escapeHTML(summary.avoid)}</div><div class="item action"><strong>補運方法</strong>${escapeHTML(summary.fengshui)}</div>`;
-}
-function makeSummary(p,s){
-  const dir=PALACE_DIR[p.key]; const topic=chart?.settings?.qtype||"這件事"; const topicLine=qtypeAdvice(topic);
-  if(s.denied){return {short:"不宜硬推", total:"這件事現在不順，先不要急著定案。不是完全沒機會，而是眼前阻力比較重，越急越容易做錯。", action:`先停、先查、先問清楚。今天適合把資料補齊、把風險列出來、等對方明確回覆；重要決定不要當場答應。${topicLine}`, avoid:"避免催促、爭辯、簽急件、付大錢、承諾做不到的事。若對方一直模糊，就先保留。", fengshui:`${dir}今天先安靜處理：整理乾淨、不要敲打修繕、不要在這個方位吵架或談重大決定。把雜物收起來，就是補運。`}}
-  const good=s.score>=60;
-  let total=good?`這件事可以推進，但要用穩的方式做。先抓一個小步驟開始，不要一次押太大。`:`這件事目前力道不足，先當作觀察局。可以準備，但不適合把所有籌碼都放進去。`;
-  let action=good?`${DOOR_ADVICE[p.door]||"先用最容易成功的小步驟切入。"} ${GOD_ADVICE[p.god]||""} ${topicLine}`:`先整理條件，等訊號更清楚再行動。可以先試水溫、問細節、做備案，不要急著拍板。${topicLine}`;
-  let avoid=good?"不要貪快、不要一次講太滿。能簽字的先寫清楚，能留紀錄的不要只靠口頭。":"避免重押、避免借錢或先墊、避免為了面子硬撐。今天重點是守住基本盤。";
-  if(p.flags.includes("空")) { action += " 承諾要等白紙黑字，不要只聽口頭。"; avoid += " 空口承諾先不要信滿。"; }
-  if(p.flags.includes("迫")||p.flags.includes("刑")) { action += " 說話放慢，條件一條一條確認。"; avoid += " 不要硬碰硬，也不要帶情緒回覆。"; }
-  if(p.flags.includes("馬")) action += " 若需要移動、拜訪、換方向，可以動，但行程要先排好。";
-  let fengshui = good ? `${dir}可以輕度啟動：整理乾淨、開燈 15-30 分鐘，把正在推進的文件或計畫放整齊；發訊息或談事情前，先讓這個方位明亮乾淨。` : `${dir}今天先收斂：收雜物、關櫃門、移開尖銳物，不在這個方位爭吵、敲打或做大額決定。`;
-  const elem=PALACE_ELEM[p.key]; if(good){ if(elem==="木")fengshui += " 可放健康綠植或木質物。"; if(elem==="火")fengshui += " 可用溫和燈光，不用強光。"; if(elem==="土")fengshui += " 可放陶瓷、石材或穩重物件。"; if(elem==="金")fengshui += " 可用白色、金屬或圓形物件。"; if(elem==="水")fengshui += " 可放一杯乾淨清水，但不可髒水或漏水。"}
-  return {short:good?"小步可行":"先觀望",total,action,avoid,fengshui}
 }
 function qtypeAdvice(topic){
   return {
@@ -514,13 +540,6 @@ function reportHTML(text){
   return `<article class="report-article"><h3 class="report-title">${escapeHTML(title)}</h3>${blocks.map(reportBlockHTML).join("")}</article>`;
 }
 function renderReport(){document.getElementById("reportBox").innerHTML=reportHTML(makeReport(reportMode))}
-function makeReport(mode=reportMode){
-  if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
-  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門報告`,question?`問事：${question}`:"",`結論：${summary.short}`,`大師斷語：${summary.total}`,`今天怎麼做：${summary.action}`,`先避開：${summary.avoid}`,`補運方法：${summary.fengshui}`].filter(Boolean).join("\n\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`大師斷語：${summary.total}`); out.push(`今天怎麼做：${summary.action}`); out.push(`先避開：${summary.avoid}`); out.push(`補運方法：${summary.fengshui}`); out.push(""); out.push(`提醒：`); s.reasons.forEach(r=>out.push(`- ${r.text}`));}
-  else out.push("\n尚未選 1-9 鎖宮。");
-  return out.join("\n")
-}
-
 // ===== 匯入、匯出與案例庫 =====
 function download(name,text,type="text/plain;charset=utf-8"){const blob=new Blob([text],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function copyText(text){
@@ -537,10 +556,10 @@ async function copyText(text){
   finally{document.querySelectorAll("textarea[readonly][style*='-9999px']").forEach(el=>el.remove())}
 }
 function toast(msg){setNote(msg)}
-function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), chart, selectedNum}}
 function restoreChartPayload(payload){
   if(!payload||!payload.chart||!Array.isArray(payload.chart.palaces))throw new Error("JSON 不是可匯入的盤面。");
   chart=payload.chart; selectedNum=payload.selectedNum?Number(payload.selectedNum):null;
+  chart.problemDiagnosis=chart.problemDiagnosis||payload.problemDiagnosis||diagnoseQuestion(payload.question||chart.question||"");
   if(payload.question||chart.question)document.getElementById("questionText").value=payload.question||chart.question;
   if(chart.settings){
     if(chart.settings.qtype)document.getElementById("qtype").value=chart.settings.qtype;
@@ -549,12 +568,14 @@ function restoreChartPayload(payload){
     if(chart.settings.inquiryMode)document.getElementById("inquiryMode").value=chart.settings.inquiryMode;
     if(chart.settings.selectionMode)setSelectionMode(chart.settings.selectionMode);
     if(chart.settings.compareOptions){
-      compareSelections={A:Number(chart.settings.compareOptions.A?.num||0)||null,B:Number(chart.settings.compareOptions.B?.num||0)||null};
-      const a=document.getElementById("optionAName"), b=document.getElementById("optionBName");
-      if(a)a.value=chart.settings.compareOptions.A?.name||"";
-      if(b)b.value=chart.settings.compareOptions.B?.name||"";
+      compareSelections=blankCompareSelections();
+      compareSides().forEach(side=>{
+        compareSelections[side]=Number(chart.settings.compareOptions[side]?.num||0)||null;
+        const input=document.getElementById(`option${side}Name`);
+        if(input)input.value=chart.settings.compareOptions[side]?.name||"";
+      });
     }else{
-      compareSelections={A:null,B:null};
+      compareSelections=blankCompareSelections();
     }
     inquiryLocked=!!chart.settings.lockedFormal;
   }
@@ -565,8 +586,8 @@ function restoreChartPayload(payload){
   renderAll(); showView("chart"); toast("已匯入盤面。");
 }
 function resetInquiry(){
-  chart=null; selectedNum=null; inquiryLocked=false; activeCaseId=null; activeCompareSide="A"; compareSelections={A:null,B:null}; setSelectionMode("single");
-  const a=document.getElementById("optionAName"), b=document.getElementById("optionBName"); if(a)a.value=""; if(b)b.value="";
+  chart=null; selectedNum=null; inquiryLocked=false; activeCaseId=null; activeCompareSide="A"; compareSelections=blankCompareSelections(); setSelectionMode("single");
+  compareSides().forEach(side=>{const input=document.getElementById(`option${side}Name`); if(input)input.value="";});
   document.getElementById("caseTitle").value="";
   document.getElementById("caseOutcome").value="";
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value="";
@@ -578,54 +599,6 @@ function loadCases(){
   try{const raw=localStorage.getItem(CASE_STORAGE_KEY); return raw?JSON.parse(raw):[]}catch(e){return []}
 }
 function saveCases(cases){localStorage.setItem(CASE_STORAGE_KEY,JSON.stringify(cases))}
-function currentCase(){
-  if(!chart||!selectedNum)throw new Error("請先起盤並選數字。");
-  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s);
-  return {
-    id:`case-${Date.now()}`,
-    savedAt:new Date().toISOString(),
-    title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,
-    outcome:document.getElementById("caseOutcome").value.trim(),
-    qtype:chart.settings.qtype,
-    question:chart.question||questionText(),
-    selectedNum,
-    lockedPalace:p?`${p.key}${p.number}`:"",
-    result:s.denied?"直接否定":`${s.score}/100 ${s.grade.name}`,
-    summary:summary.total,
-    payload:chartPayload()
-  };
-}
-function saveCurrentCase(){
-  try{
-    const cases=loadCases(); cases.unshift(currentCase()); saveCases(cases.slice(0,100));
-    document.getElementById("caseTitle").value=""; document.getElementById("caseOutcome").value="";
-    renderCases(); toast("案例已儲存。");
-  }catch(err){toast(err.message||"案例儲存失敗。")}
-}
-function renderCases(){
-  const box=document.getElementById("caseList"); if(!box)return;
-  const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
-  const cases=loadCases().filter(c=>!query||[c.title,c.outcome,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query));
-  if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
-  box.innerHTML=cases.map(c=>`<div class="case-card" data-case-id="${escapeHTML(c.id)}">
-    <div>
-      <h3>${escapeHTML(c.title)}</h3>
-      <small>${escapeHTML(c.qtype)}｜${escapeHTML(c.lockedPalace)}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
-      ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
-      <div class="case-tags"><span class="tab">${escapeHTML(c.selectedNum)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span></div>
-    </div>
-    <div class="case-actions">
-      <button class="case-mini" type="button" data-action="load">回看</button>
-      <button class="case-mini danger" type="button" data-action="delete">刪除</button>
-    </div>
-  </div>`).join("");
-}
-function handleCaseClick(event){
-  const btn=event.target.closest("button[data-action]"); if(!btn)return;
-  const card=btn.closest("[data-case-id]"); const id=card?.dataset.caseId; const cases=loadCases(); const item=cases.find(c=>c.id===id); if(!item)return;
-  if(btn.dataset.action==="load"){restoreChartPayload(item.payload); toast("已載入案例。"); return}
-  if(btn.dataset.action==="delete"){saveCases(cases.filter(c=>c.id!==id)); renderCases(); toast("案例已刪除。");}
-}
 async function importJsonFile(file){
   if(!file)return;
   try{
@@ -636,7 +609,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=report-layout-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -682,37 +655,101 @@ function evidenceAction(type,sym,qtype,value,isDeny){
 function makeEvidence(type,sym,value,qtype,isDeny=false){
   return {type:evidenceKind(value,isDeny,type,sym),source:evidenceSource(type),name:sym,score:isDeny?0:value,reason:evidenceReason(type,sym,qtype),action:evidenceAction(type,sym,qtype,value,isDeny)};
 }
-function scorePalaceRaw(p,qtype){
-  let score=0; const reasons=[]; const deniers=[]; const rawEvidence=[];
-  if(!p||p.isCenter)return {score:0,reasons:[{label:"中宮不用",value:0,text:"中宮不直接作鎖單宮判斷。"}],rawEvidence,denied:false,deniers:[],grade:grade(0)};
-  function deny(type,sym){
-    if(sym&&DIRECT_DENY[type]&&DIRECT_DENY[type].has(sym)){
-      const ev=makeEvidence(type,sym,contribution(type,sym),qtype,true);
-      deniers.push({label:denyReason(type,sym),value:0,text:`${sym}：${ev.reason} ${ev.action}`,evidence:ev});
-      rawEvidence.push(ev);
-    }
+function palaceSymbols(p){
+  if(!p)return [];
+  return unique([p.key,`${p.key}宮`,p.door,p.star,p.god].concat(p.top||[],p.bottom||[],p.flags||[]));
+}
+function qtypeWeightRule(qtype){return QTYPE_WEIGHTS[qtype]||QTYPE_WEIGHTS["今日運勢"]}
+function isSymbolInPalace(p,sym){
+  if(!p||!sym)return false;
+  if(sym==="日干")return chart?.meta?.dayStem && (p.top.includes(chart.meta.dayStem)||p.bottom.includes(chart.meta.dayStem));
+  if(sym==="時干")return chart?.meta?.hourStem && (p.top.includes(chart.meta.hourStem)||p.bottom.includes(chart.meta.hourStem));
+  if(sym==="值符")return p.god==="值符"||p.star===chart?.meta?.zhifu;
+  if(sym==="值使")return p.door===chart?.meta?.zhishi;
+  return palaceSymbols(p).includes(sym);
+}
+function severityForPalace(p,qtype){
+  const has=(sym)=>isSymbolInPalace(p,sym);
+  const fatal=[];
+  if(has("白虎")&&(has("傷門")||has("刑")||has("迫")))fatal.push("白虎與傷門/刑迫同宮，衝突與損傷象集中。");
+  if(has("死門")&&has("天芮"))fatal.push("死門與天芮同宮，停滯與病符象集中。");
+  if(fatal.length)return {level:"fatal",reasons:fatal};
+  if(has("死門")||has("杜門")||has("墓"))return {level:"block",reasons:["此宮有卡住、收尾、封閉或入墓象，宜降速整理。"]};
+  if(has("空"))return {level:"pending",reasons:["空亡代表事情未實、條件待確認，不宜把口頭訊號當成定案。"]};
+  if(has("玄武")||has("螣蛇")||has("驚門")||has("傷門"))return {level:"risk",reasons:["此宮有資訊不透明、驚擾、糾纏或衝動風險。"]};
+  if(has("生門")||has("開門")||has("休門")||has("六合")||has("太陰")||has("值符")||has("九天"))return {level:"usable",reasons:["此宮有可用象，但仍需依題型小步取用。"]};
+  return {level:"neutral",reasons:["此宮沒有明顯極端象，需回到題型與三宮關係判斷。"]};
+}
+function directDenyForSeverity(severity){return severity.level==="fatal"}
+function scorePalaceV5(p,qtype,context={}){
+  const rawEvidence=[];
+  if(!p||p.isCenter){
+    const empty={score:0,baseScore:0,qtypeScore:0,level:grade(0),directDeny:false,severity:{level:"neutral",reasons:["中宮不用。"]},evidence:rawEvidence,rawEvidence,reasons:[{label:"中宮不用",value:0,text:"中宮不直接作鎖單宮判斷。"}],ruleTrace:[]};
+    return {...empty,denied:false,deniers:[],grade:empty.level};
   }
-  function add(type,label,sym){
-    if(!sym)return;
-    const value=contribution(type,sym);
-    if(value>0){score+=value; const ev=makeEvidence(type,sym,value,qtype,false); reasons.push({label,value,text:`${sym}：${ev.reason} ${ev.action}`,evidence:ev}); rawEvidence.push(ev);}
-    else if(value<0){rawEvidence.push(makeEvidence(type,sym,value,qtype,false));}
-  }
+  const qRule=qtypeWeightRule(qtype);
+  const reasons=[]; const ruleTrace=[];
+  const addTrace=(source,sym,value,kind,extra="")=>{
+    if(!sym||!isSymbolInPalace(p,sym))return 0;
+    const ev=makeEvidence(source,sym,value,qtype,false);
+    ev.ruleKind=kind; ev.extra=extra;
+    rawEvidence.push(ev);
+    ruleTrace.push({symbol:sym,source:evidenceSource(source),value,kind,reason:extra||ev.reason});
+    reasons.push({label:sym,value,text:`${sym}：${ev.reason} ${ev.action}`,evidence:ev});
+    return value;
+  };
+  let baseScore=35;
   rawEvidence.push(makeEvidence("palace",p.key,0,qtype,false));
-  deny("god",p.god); deny("star",p.star); deny("door",p.door);
-  p.top.concat(p.bottom).forEach(st=>deny("stem",st));
-  p.flags.forEach(f=>deny("flag",f));
-  if(deniers.length)return {score:0,reasons:deniers,denied:true,directDeny:true,deniers,rawEvidence,grade:{name:"強烈不建議",cls:"score-bad",level:"強烈不建議，但要說清楚是哪一種否定"}};
-  add("god","八神",p.god); add("star","九星",p.star); add("door","八門",p.door);
-  p.top.concat(p.bottom).forEach(st=>add("stem","天干",st));
-  p.flags.forEach(f=>rawEvidence.push(makeEvidence("flag",f,0,qtype,false)));
-  score=clamp(Math.round(score),0,100);
-  return {score,reasons,denied:false,directDeny:false,deniers:[],rawEvidence,grade:grade(score)};
+  [["god",p.god],["star",p.star],["door",p.door]].forEach(([type,sym])=>{
+    const value=contribution(type,sym);
+    if(value){
+      const adjusted=value<=-100?-24:value;
+      baseScore+=adjusted;
+      addTrace(type,sym,adjusted,"base",`基礎象分：${adjusted>0?"+":""}${adjusted}`);
+    }
+  });
+  p.top.concat(p.bottom).forEach(st=>{
+    const value=contribution("stem",st);
+    if(value){
+      const adjusted=value<=-100?-18:value;
+      baseScore+=adjusted;
+      addTrace("stem",st,adjusted,"base",`天干基礎分：${adjusted>0?"+":""}${adjusted}`);
+    }
+  });
+  p.flags.forEach(flag=>{
+    let value=flag==="空"?-8:["刑","迫","墓"].includes(flag)?-10:flag==="馬"?4:0;
+    if(value){
+      baseScore+=value;
+      addTrace("flag",flag,value,"base",`特殊象修正：${value>0?"+":""}${value}`);
+    }else{
+      rawEvidence.push(makeEvidence("flag",flag,0,qtype,false));
+    }
+  });
+  let qtypeScore=0;
+  Object.entries(qRule.bonus||{}).forEach(([sym,value])=>{qtypeScore+=addTrace("qtype",sym,value,"qtype-bonus",`${qtype}用途加權：${value>0?"+":""}${value}`);});
+  Object.entries(qRule.penalty||{}).forEach(([sym,value])=>{
+    let adjusted=value;
+    if(sym==="空"&&["健康"].includes(qtype))adjusted=-4;
+    if(sym==="空"&&["風水"].includes(qtype))adjusted=Math.min(-6,value);
+    qtypeScore+=addTrace("qtype",sym,adjusted,"qtype-penalty",`${qtype}用途扣分：${adjusted}`);
+  });
+  const focusHits=(qRule.focus||[]).filter(sym=>isSymbolInPalace(p,sym));
+  if(focusHits.length){
+    const focusScore=Math.min(12,focusHits.length*3);
+    baseScore+=focusScore;
+    ruleTrace.push({symbol:focusHits.join("、"),source:"題型焦點",value:focusScore,kind:"focus",reason:`命中${qtype}焦點：${focusHits.join("、")}`});
+  }
+  const severity=severityForPalace(p,qtype);
+  if(severity.level==="fatal")baseScore-=25;
+  if(severity.level==="pending"&&["財運","合作","決策"].includes(qtype))qtypeScore-=4;
+  if(severity.level==="usable")baseScore+=5;
+  const directDeny=directDenyForSeverity(severity);
+  const finalScore=directDeny?clamp(Math.round(baseScore+qtypeScore),0,42):clamp(Math.round(baseScore+qtypeScore),0,100);
+  const level=directDeny?{name:"強烈不建議",cls:"score-bad",level:"強烈不建議，先降速避險"}:grade(finalScore);
+  return {score:finalScore,baseScore:Math.round(baseScore),qtypeScore:Math.round(qtypeScore),level,grade:level,directDeny,denied:directDeny,severity,evidence:rawEvidence,rawEvidence,reasons,deniers:directDeny?severity.reasons.map(text=>({label:"嚴重度 fatal",value:0,text})):[],ruleTrace};
 }
-function scorePalace(p,qtype){
-  if(!p||p.isCenter)return {score:0,reasons:[{label:"中宮不用",value:0,text:"中宮不直接作鎖單宮判斷。"}],rawEvidence:[],grade:grade(0)};
-  return scorePalaceRaw(p,qtype);
-}
+function scorePalaceRaw(p,qtype){return scorePalaceV5(p,qtype,{chart})}
+function scorePalace(p,qtype){return scorePalaceV5(p,qtype,{chart})}
 function evidenceText(ev){const mark=ev.score>0?`+${ev.score}`:ev.score<0?String(ev.score):"0"; return `${ev.source}｜${ev.name}｜${mark}：${ev.reason} 建議：${ev.action}`}
 function listText(items){return items&&items.length?items.map(x=>`- ${x}`).join("\n"):""}
 function samePalaceHas(p,names){return names.some(n=>p.door===n||p.star===n||p.god===n||p.top.includes(n)||p.bottom.includes(n)||p.flags.includes(n)||p.key===n)}
@@ -760,15 +797,99 @@ function bestFengShui(type,locked){
   const matched=(chart?.palaces||[]).filter(p=>!p.isCenter&&classifyFengShuiPalace(p)===type).sort((a,b)=>scorePalaceRaw(b,chart.settings.qtype).score-scorePalaceRaw(a,chart.settings.qtype).score);
   return matched[0]||locked;
 }
+function fengShuiChoice(p,type){
+  const dir=PALACE_DIR[p.key]||"中央";
+  const base={palace:p.key,direction:dir,reason:"",do:[],avoid:[]};
+  if(type==="activate")return {...base,reason:`${p.key}宮見${[p.door,p.god,p.star].filter(Boolean).join("、")}，較適合輕度啟動。`,do:["清掉雜物","補柔和光線","整理合約、報價或計畫","面向此方傳重要訊息"],avoid:["不要誇張擺設","不要一次重押"]};
+  if(type==="quiet")return {...base,reason:`${p.key}宮有需安靜處理的訊號，適合降噪與整理。`,do:["保持乾淨","降低音量","收納帳單與電線"],avoid:["不要大聲講電話","不要在此方爭辯","不要堆放雜亂物"]};
+  return {...base,reason:`${p.key}宮風險象較集中，今日不宜大動。`,do:["保持安全","只做必要清潔"],avoid:["不敲打","不修繕","不搬重物","不在此方做重大決定"]};
+}
 function buildFengShuiPlan(locked){
   const activate=bestFengShui("activate",locked), quiet=bestFengShui("quiet",locked), avoid=bestFengShui("avoid",locked);
+  const activateChoice=fengShuiChoice(activate,"activate"), quietChoice=fengShuiChoice(quiet,"quiet"), avoidChoice=fengShuiChoice(avoid,"avoid");
   return {
-    activate:`啟動方：${PALACE_DIR[activate.key]}（${activate.key}宮）。清掉雜物、放柔和小燈或健康綠植，可在此方整理合約、報價、計畫，或面向此方傳重要訊息。`,
-    quiet:`安靜方：${PALACE_DIR[quiet.key]}（${quiet.key}宮）。保持乾淨，不大聲講電話，不放音響，不堆帳單與雜亂電線。`,
-    avoid:`避動方：${PALACE_DIR[avoid.key]}（${avoid.key}宮）。不敲打、不修繕、不搬重物、不在此方爭吵，也不在此方做重大決定。`,
+    activate:`啟動方：${activateChoice.direction}（${activateChoice.palace}宮）。${activateChoice.reason} 可做：${activateChoice.do.join("、")}。`,
+    quiet:`安靜方：${quietChoice.direction}（${quietChoice.palace}宮）。${quietChoice.reason} 避免：${quietChoice.avoid.join("、")}。`,
+    avoid:`避動方：${avoidChoice.direction}（${avoidChoice.palace}宮）。${avoidChoice.reason} 避免：${avoidChoice.avoid.join("、")}。`,
+    activateChoice,
+    quietChoice,
+    avoidChoice,
     activatePalace:activate.key,
     quietPalace:quiet.key,
     avoidPalace:avoid.key
+  };
+}
+function findPalacesBySymbol(sourceChart,symbol){
+  if(!sourceChart||!symbol)return [];
+  const palaces=sourceChart.palaces||[];
+  const target=String(symbol);
+  return palaces.filter(p=>{
+    if(!p||p.isCenter)return false;
+    if(p.key===target||`${p.key}宮`===target||PALACE_DIR[p.key]===target)return true;
+    if(p.door===target||p.star===target||p.god===target)return true;
+    if((p.top||[]).includes(target)||(p.bottom||[]).includes(target)||(p.flags||[]).includes(target))return true;
+    if(target==="日干")return sourceChart.meta?.dayStem && ((p.top||[]).includes(sourceChart.meta.dayStem)||(p.bottom||[]).includes(sourceChart.meta.dayStem));
+    if(target==="時干")return sourceChart.meta?.hourStem && ((p.top||[]).includes(sourceChart.meta.hourStem)||(p.bottom||[]).includes(sourceChart.meta.hourStem));
+    if(target==="值符")return p.god==="值符"||p.star===sourceChart.meta?.zhifu;
+    if(target==="值使")return p.door===sourceChart.meta?.zhishi;
+    return false;
+  });
+}
+function firstPalaceBySymbols(sourceChart,symbols,fallback){
+  for(const sym of symbols){
+    const found=findPalacesBySymbol(sourceChart,sym);
+    if(found.length)return found[0];
+  }
+  return fallback||null;
+}
+function palaceRelation(a,b){
+  if(!a||!b)return {type:"待確認",text:"缺少宮位，暫不能判斷三宮生剋。"};
+  const ae=PALACE_ELEM[a.key], be=PALACE_ELEM[b.key];
+  if(a.key===b.key||ae===be)return {type:"比和",text:`${a.key}與${b.key}同氣或同宮，代表同類相助，也可能同類消耗。`};
+  if(ELEM_SHENG[ae]===be)return {type:"a生b",text:`${a.key}${ae}生${b.key}${be}：本人助事情，能推動，但會耗力。`};
+  if(ELEM_SHENG[be]===ae)return {type:"b生a",text:`${b.key}${be}生${a.key}${ae}：事情助本人，較順，但仍要看風險象。`};
+  if(ELEM_KE[ae]===be)return {type:"a克b",text:`${a.key}${ae}克${b.key}${be}：本人能控制事情，但容易硬碰硬。`};
+  if(ELEM_KE[be]===ae)return {type:"b克a",text:`${b.key}${be}克${a.key}${ae}：事情壓人，壓力較大，宜降級處理。`};
+  return {type:"待確認",text:`${a.key}與${b.key}關係不明顯，需回到門、星、神與特殊象判斷。`};
+}
+function matterSymbolsForQtype(qtype){
+  return {
+    "今日運勢":["時干","值使","值符"],
+    "工作":["開門","時干","值使"],
+    "財運":["生門","戊","六合"],
+    "感情":["六合","乙","庚","日干","時干"],
+    "合作":["六合","開門","生門","時干"],
+    "健康":["天芮","死門","傷門","白虎","日干"],
+    "風水":["生門","開門","休門","死門","驚門","白虎"],
+    "決策":["時干","開門","生門","值符","值使"]
+  }[qtype]||["時干","開門","生門"];
+}
+function palaceSnapshot(p){
+  if(!p)return null;
+  return {key:p.key,number:p.number,direction:PALACE_DIR[p.key]||"中央",element:PALACE_ELEM[p.key]||"",door:p.door,star:p.star,god:p.god,top:p.top,bottom:p.bottom,flags:p.flags};
+}
+function analyzeThreePalaces(sourceChart, num, qtype){
+  const lockNumber=lockedPalaceNumber(num);
+  const lockPalace=(sourceChart?.palaces||[]).find(p=>p.number===lockNumber)||getPalaceByNum(num);
+  const selfPalace=firstPalaceBySymbols(sourceChart,["日干"],lockPalace);
+  const matterPalace=firstPalaceBySymbols(sourceChart,matterSymbolsForQtype(qtype),lockPalace);
+  const relationSelfMatter=palaceRelation(selfPalace,matterPalace);
+  const relationLockMatter=palaceRelation(lockPalace,matterPalace);
+  const narrative=[
+    `鎖定宮是${lockPalace?.key||"待確認"}宮，代表你憑直覺選到的入口。`,
+    `本人宮是${selfPalace?.key||"待確認"}宮，用日干看你當下狀態。`,
+    `事情宮是${matterPalace?.key||"待確認"}宮，依「${qtype}」取${matterSymbolsForQtype(qtype).join("、")}作為題型用神。`,
+    relationSelfMatter.text,
+    relationLockMatter.text
+  ].filter(Boolean).join(" ");
+  return {
+    lockPalace:palaceSnapshot(lockPalace),
+    selfPalace:palaceSnapshot(selfPalace),
+    matterPalace:palaceSnapshot(matterPalace),
+    relationSelfMatter,
+    relationLockMatter,
+    focusPalaces:unique([lockPalace?.key,selfPalace?.key,matterPalace?.key]),
+    narrative
   };
 }
 function copyBank(){return window.QIMEN_COPY_BANK||{}}
@@ -893,9 +1014,9 @@ function taixuReportIntro(mode){
 }
 function generateSoulReport(sourceChart, selectedPalace, qtype){
   const p=selectedPalace; const s=scorePalace(p,qtype); const bank=copyBank(); const evidence=buildCopyBankEvidence(sourceChart,p,qtype,s);
-  const today=buildTodayAdvice(p,s,qtype); const feng=buildFengShuiPlan(p);
+  const today=buildTodayAdvice(p,s,qtype); const feng=buildFengShuiPlan(p); const threePalace=analyzeThreePalaces(sourceChart,selectedNum,qtype);
   const positives=evidence.filter(ev=>ev.type==="good"); const risks=evidence.filter(ev=>ev.type==="risk"||ev.type==="warning");
-  const level=s.denied?"強烈不建議":s.grade.name; const seed=[sourceChart?.meta?.solar,p.key,qtype,level].join("|");
+  const level=s.directDeny?"強烈不建議":s.grade.name; const seed=[sourceChart?.meta?.solar,p.key,qtype,level].join("|");
   const firstRisk=risks[0]; const firstGood=positives[0]; const symbols=[p.door,p.star,p.god].filter(Boolean).join("、");
   const headline=s.denied
     ? `${p.key}宮${firstRisk?`見${firstRisk.name}`:"阻力偏重"}：${taixuLevelPhrase(level,seed)}`
@@ -913,7 +1034,10 @@ function generateSoulReport(sourceChart, selectedPalace, qtype){
   const fengShui=[feng.activate,feng.quiet,feng.avoid].map(line=>`環境調整：${line} 這不是改命，而是把地利整理到比較不干擾人的狀態。`).join("\n");
   return {
     headline, score:s.score, level,
-    palaceSummary:`報數 ${selectedNum} 鎖 ${p.key}${p.number}宮，方位在${PALACE_DIR[p.key]}，五行屬${PALACE_ELEM[p.key]}。本次以「${qtype}」解讀，依宮、門、星、神、干、特殊象與題型組合判斷；文字採現象、邏輯、降級方案三段式。`,
+    problemDiagnosis:sourceChart?.problemDiagnosis||diagnoseQuestion(sourceChart?.question||questionText()),
+    palaceSummary:`報數 ${selectedNum} 鎖 ${p.key}${p.number}宮，方位在${PALACE_DIR[p.key]}，五行屬${PALACE_ELEM[p.key]}。本次以「${qtype}」解讀，依鎖定宮、本人宮、事情宮、宮、門、星、神、干、特殊象與題型組合判斷。`,
+    threePalace,
+    scoreBreakdown:{baseScore:s.baseScore,qtypeScore:s.qtypeScore,finalScore:s.score,ruleTrace:s.ruleTrace,severity:s.severity,directDeny:s.directDeny},
     why:evidence.map(evidenceText),
     present:sentenceList(presentParts),
     obstacle,
@@ -924,9 +1048,11 @@ function generateSoulReport(sourceChart, selectedPalace, qtype){
     fengShuiPlan:feng,
     timing:"先以今日到明日為觀察窗；若有空亡或條件未落實，等對方回覆、文件確認、款項入帳後再放大行動。",
     verifyPoints:["今天是否真的出現盤面提示的主題，而不是只停在感覺。","採取建議後，事情是否被降級：衝突變少、成本變小、風險變可控。","阻礙是出現在溝通、金錢、工作、健康、風水或其他面向。","明日回填準確度 1-5 星，記錄應在哪一件事上。"],
-    confidence:s.denied?"中高，因為有直接否定象":positives.length&&risks.length?"中等，吉凶並見，需要照建議取用":positives.length?"中高，主要依據集中在可用象":"中低，正向依據不足",
+    confidence:s.directDeny?"中高，因為有 fatal 嚴重度組合":positives.length&&risks.length?"中等，吉凶並見，需要照建議取用":positives.length?"中高，主要依據集中在可用象":"中低，正向依據不足",
     evidence,
     rawEvidence:evidence,
+    ruleTrace:s.ruleTrace,
+    severity:s.severity,
     todayAdvice:today
   };
 }
@@ -941,49 +1067,79 @@ function makeSoulReportForNumber(num,p){
 }
 function compareOptions(){
   const opts=chart?.settings?.compareOptions||{};
-  return {
-    A:{name:opts.A?.name||compareOptionName("A"),num:Number(opts.A?.num||compareSelections.A||0)||null},
-    B:{name:opts.B?.name||compareOptionName("B"),num:Number(opts.B?.num||compareSelections.B||0)||null}
-  };
+  return Object.fromEntries(compareSides().map(side=>[side,compareOptionFromState(side,opts)]));
+}
+function decisionMetricsForChoice(opt,scoreInfo){
+  const name=String(opt.name||"");
+  const lowCost=/先|短|小|試|等|不動|暫|觀察|確認|訊息|整理/.test(name);
+  const highCost=/簽|投|借|付|辭|離職|搬|買|長約|重押|大/.test(name);
+  const reversible=lowCost&&!highCost;
+  const riskPenalty={fatal:35,block:22,pending:12,risk:16,usable:3,neutral:8}[scoreInfo.severity?.level||"neutral"]||8;
+  const reversibility=reversible?85:highCost?35:60;
+  const cost=lowCost?25:highCost?80:50;
+  const risk=clamp(100-scoreInfo.score+riskPenalty,0,100);
+  const decisionScore=clamp(Math.round(scoreInfo.score + reversibility*0.18 - cost*0.12 - risk*0.1),0,100);
+  return {reversibility,cost,risk,decisionScore,notes:[reversible?"可逆性較高":"可逆性待確認",lowCost?"成本較小":highCost?"成本偏高":"成本中等",`風險 ${risk}/100`],verifyPoint:`先驗證「${opt.name}」是否能用最小行動取得明確回覆或條件。`};
 }
 function compareChoice(side,opt){
   const p=getPalaceByNum(opt.num);
   const s=scorePalace(p,chart.settings.qtype);
   const report=makeSoulReportForNumber(opt.num,p);
-  return {side,name:opt.name,num:opt.num,palace:p,score:s.score,denied:!!s.denied,grade:s.denied?"強烈不建議":s.grade.name,report};
+  const decision=decisionMetricsForChoice(opt,s);
+  return {side,name:opt.name,num:opt.num,palace:p,score:s.score,denied:!!s.denied,grade:s.denied?"強烈不建議":s.grade.name,report,decision};
 }
-function compareRankValue(choice){return choice.denied?-20:choice.score}
+function compareRankValue(choice){return choice.denied?-20:choice.decision.decisionScore}
 function buildCompareContext(){
   const opts=compareOptions();
-  const A=compareChoice("A",opts.A), B=compareChoice("B",opts.B);
-  const aVal=compareRankValue(A), bVal=compareRankValue(B), diff=aVal-bVal;
-  let winner=null, weaker=null, verdict="";
-  if(A.denied&&B.denied){winner=aVal>=bVal?A:B; weaker=winner===A?B:A; verdict="兩個選項都不適合重押，只能選風險較小的一方，小步試探。";}
-  else if(Math.abs(diff)<10){winner=aVal>=bVal?A:B; weaker=winner===A?B:A; verdict="兩個選項差距不大，重點不在誰一定贏，而是哪一個條件更清楚、風險更容易降級。";}
-  else {winner=diff>0?A:B; weaker=winner===A?B:A; verdict=`${winner.name}目前較可用，因為分數、阻力與可操作性整體優於${weaker.name}。`;}
-  return {A,B,winner,weaker,diff:Math.abs(diff),verdict,qtype:chart.settings.qtype,question:chart.question||questionText()};
+  const choices=filledCompareOptions(opts).map(opt=>compareChoice(opt.side,opt));
+  const ranked=[...choices].sort((a,b)=>compareRankValue(b)-compareRankValue(a));
+  const winner=ranked[0], weaker=ranked[ranked.length-1], diff=Math.abs(compareRankValue(winner)-compareRankValue(weaker));
+  let verdict="";
+  if(ranked.every(c=>c.denied))verdict="所有選項都有強壓力，不適合重押；只能選風險最低、成本最小、最可逆的一步。";
+  else if(diff<10)verdict="選項差距不大，重點不是硬分輸贏，而是哪個條件最清楚、可逆性最高、風險最容易降級。";
+  else verdict=`${winner.name}目前較可用，因為決策分、可逆性、成本與風險整體優於其他選項。`;
+  const bySide=Object.fromEntries(choices.map(choice=>[choice.side,choice]));
+  return {...bySide,choices,ranked,winner,weaker,diff,verdict,qtype:chart.settings.qtype,question:chart.question||questionText()};
 }
 function compareCardHTML(choice,winnerSide){
+  const tp=choice.report.threePalace;
   return `<div class="compare-card ${choice.side===winnerSide?"winner":""}">
     <div class="compare-card-head"><strong>${escapeHTML(choice.side)}｜${escapeHTML(choice.name)}</strong><span>${choice.denied?"×":choice.score+"/100"}｜${escapeHTML(choice.grade)}</span></div>
     <div>${escapeHTML(choice.num)} 號鎖 ${escapeHTML(choice.palace.key)}${choice.palace.number}宮｜${escapeHTML(PALACE_DIR[choice.palace.key])}</div>
-    <div class="compare-card-copy">${escapeHTML(compactText(choice.report.headline,180))}</div>
+    <div class="compare-card-copy">本人 ${escapeHTML(tp.selfPalace.key)}宮｜事情 ${escapeHTML(tp.matterPalace.key)}宮｜${escapeHTML(tp.relationSelfMatter.type)}</div>
+    <div class="compare-card-copy">決策分 ${choice.decision.decisionScore}/100｜可逆 ${choice.decision.reversibility}｜成本 ${choice.decision.cost}｜風險 ${choice.decision.risk}</div>
+    <div class="compare-card-copy">${escapeHTML(compactText(compareActionText(choice),180))}</div>
   </div>`;
 }
 function comparePanelHTML(ctx){
   return `<div class="compare-result">
     <div class="compare-verdict"><strong>比較結論</strong>${escapeHTML(ctx.verdict)}</div>
-    <div class="compare-cards">${compareCardHTML(ctx.A,ctx.winner.side)}${compareCardHTML(ctx.B,ctx.winner.side)}</div>
+    <div class="compare-cards">${ctx.ranked.map(choice=>compareCardHTML(choice,ctx.winner.side)).join("")}</div>
     <div class="locked-summary"><strong>推薦取用</strong>${escapeHTML(ctx.winner.name)}較可用；若選${escapeHTML(ctx.weaker.name)}，請先照它的避險方法降級，不要一次重押。</div>
   </div>`;
 }
 function compareSummaryText(ctx){
-  return `${ctx.verdict}\n\n推薦：${ctx.winner.side}｜${ctx.winner.name}（${ctx.winner.score}/100｜${ctx.winner.grade}）\n備選：${ctx.weaker.side}｜${ctx.weaker.name}（${ctx.weaker.score}/100｜${ctx.weaker.grade}）`;
+  return `${ctx.verdict}\n\n推薦：${ctx.winner.side}｜${ctx.winner.name}（盤面 ${ctx.winner.score}/100｜決策 ${ctx.winner.decision.decisionScore}/100｜${ctx.winner.grade}）\n最低排序：${ctx.weaker.side}｜${ctx.weaker.name}（盤面 ${ctx.weaker.score}/100｜決策 ${ctx.weaker.decision.decisionScore}/100｜${ctx.weaker.grade}）`;
+}
+function compareLeadAction(choice){
+  const name=String(choice?.name||"");
+  if(/不動|暫停|先停|觀察/.test(name))return `先以${choice.name}為主線暫停出手。`;
+  if(/明天|再說|等等|延後/.test(name))return `先以${choice.name}為主線延後決策。`;
+  if(/短訊息|簡短|先發|試探/.test(name))return `先以${choice.name}為主線小步試探。`;
+  return `先以${choice.name}為主線小步推進。`;
 }
 function compareActionText(choice){
+  const name=String(choice?.name||"");
+  if(/不動|暫停|先停|觀察/.test(name))return "這個選項的用法不是去推，而是暫時不出手：先觀察對方是否主動、整理自己的底線，等條件更清楚再決定要不要放大。";
+  if(/明天|再說|等等|延後/.test(name))return "這個選項的用法是延後決策：今天先不急回，把想說的話寫成草稿，明天再看情緒與條件是否更清楚。";
+  if(/短訊息|簡短|先發|試探/.test(name))return "這個選項只能小步試探：訊息要短、具體、不逼問立場，目的只拿一個明確回覆，不把關係一次推到高壓。";
   return compactText(choice.report.actionPlan,260)||"先小步確認條件，不一次重押。";
 }
 function compareRiskText(choice){
+  const name=String(choice?.name||"");
+  if(/不動|暫停|先停|觀察/.test(name))return "風險是拖延太久或錯過窗口；所以要設定觀察期限，不是無限期逃避。";
+  if(/明天|再說|等等|延後/.test(name))return "風險是把問題拖成冷處理；延後時要先想好明天要驗證哪一件事。";
+  if(/短訊息|簡短|先發|試探/.test(name))return "風險是訊息看似小，實際語氣變成逼問；避免長篇、質問、情緒字眼與連續追問。";
   return compactText(choice.report.avoidPlan,260)||"先查證條件，保留退路。";
 }
 function makeSummary(p,s){const r=makeSoulReport(p,s); return {short:r.level,total:r.headline,action:String(r.actionPlan).replace(/\n/g," "),avoid:String(r.avoidPlan).replace(/\n/g," "),fengshui:r.fengShui.replace(/\n/g," ")}}
@@ -992,30 +1148,28 @@ function renderResult(){
   if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; metricLock.textContent="未選數"; metricScore.textContent="—"; return}
   if(isCompareChart()){
     const ctx=buildCompareContext();
-    metricLock.textContent=`A:${ctx.A.num}｜B:${ctx.B.num}`;
+    metricLock.textContent=ctx.choices.map(c=>`${c.side}:${c.num}`).join("｜");
     metricScore.textContent=`推薦 ${ctx.winner.side}`;
-    document.getElementById("resultSub").textContent=`${ctx.A.name} vs ${ctx.B.name}`;
-    document.getElementById("scoreNum").textContent=ctx.winner.denied?"×":ctx.winner.score;
+    document.getElementById("resultSub").textContent=ctx.choices.map(c=>`${c.side}.${c.name}`).join(" vs ");
+    document.getElementById("scoreNum").textContent=ctx.winner.denied?"×":ctx.winner.decision.decisionScore;
     document.getElementById("gradeText").innerHTML=`<span class="score-pill ${ctx.winner.denied?"score-bad":"score-good"}">推薦 ${escapeHTML(ctx.winner.side)}</span>`;
-    document.getElementById("scoreBar").style.width=(ctx.winner.denied?100:ctx.winner.score)+"%";
-    document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">A ${escapeHTML(ctx.A.name)}</span>`,`<span class="tab">B ${escapeHTML(ctx.B.name)}</span>`,`<span class="tab">${escapeHTML(ctx.qtype)}</span>`].join("");
+    document.getElementById("scoreBar").style.width=(ctx.winner.denied?100:ctx.winner.decision.decisionScore)+"%";
+    document.getElementById("reasonTabs").innerHTML=ctx.choices.map((c,i)=>`<span class="tab ${i===0?"active":""}">${escapeHTML(c.side)} ${escapeHTML(c.name)}</span>`).concat(`<span class="tab">${escapeHTML(ctx.qtype)}</span>`).join("");
     document.getElementById("resultHeadline").textContent=ctx.verdict;
     document.getElementById("resultList").innerHTML=`${comparePanelHTML(ctx)}
-      <div class="item action"><strong>${escapeHTML(ctx.A.name)}怎麼用</strong>${escapeHTML(compareActionText(ctx.A))}</div>
-      <div class="item action"><strong>${escapeHTML(ctx.A.name)}先避開</strong>${escapeHTML(compareRiskText(ctx.A))}</div>
-      <div class="item action"><strong>${escapeHTML(ctx.B.name)}怎麼用</strong>${escapeHTML(compareActionText(ctx.B))}</div>
-      <div class="item action"><strong>${escapeHTML(ctx.B.name)}先避開</strong>${escapeHTML(compareRiskText(ctx.B))}</div>`;
+      ${ctx.ranked.map(choice=>`<div class="item action"><strong>${escapeHTML(choice.side)}｜${escapeHTML(choice.name)}怎麼用</strong>${escapeHTML(compareActionText(choice))}</div><div class="item action"><strong>${escapeHTML(choice.side)}｜${escapeHTML(choice.name)}先避開</strong>${escapeHTML(compareRiskText(choice))}</div>`).join("")}`;
     return;
   }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   metricLock.textContent=`${selectedNum}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"強烈不建議":s.score+"/100 "+s.grade.name}`;
   document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${escapeHTML(report.level)}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
-  document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">${p.key}${p.number}</span>`,`<span class="tab">${chart.settings.qtype}</span>`,`<span class="tab">用途權重待確認</span>`].join("");
+  document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">鎖定 ${p.key}${p.number}</span>`,`<span class="tab">本人 ${report.threePalace.selfPalace.key}</span>`,`<span class="tab">事情 ${report.threePalace.matterPalace.key}</span>`,`<span class="tab">用途已套用</span>`].join("");
   document.getElementById("resultHeadline").textContent=report.headline;
   const evidence=resultEvidenceItems(report.evidence).map(ev=>`<div class="item"><strong>${escapeHTML(ev.source)}｜${escapeHTML(ev.name)}</strong>${escapeHTML(taixuEvidenceSentence(ev))}</div>`).join("");
   const today=report.todayAdvice;
   const todayCards=chart.settings.qtype==="今日運勢"?`<div class="item action"><strong>今日總運</strong>${escapeHTML(today.total)}｜主題：${escapeHTML(today.topic)}</div><div class="item action"><strong>今日說話</strong>${escapeHTML(today.speech)}</div><div class="item action"><strong>今日財務</strong>${escapeHTML(today.finance)}</div><div class="item action"><strong>今日工作</strong>${escapeHTML(today.work)}</div><div class="item action"><strong>健康提醒</strong>${escapeHTML(today.health)}</div>`:"";
-  document.getElementById("resultList").innerHTML=`<div class="item"><strong>目前狀態</strong>${escapeHTML(report.present)}</div><div class="item action"><strong>今天怎麼做</strong>${escapeHTML(String(report.actionPlan).replace(/\n/g," "))}</div><div class="item action"><strong>先避開</strong>${escapeHTML(String(report.avoidPlan).replace(/\n/g," "))}</div>${todayCards}<div class="item action"><strong>風水三方位</strong>${escapeHTML(report.fengShui).replace(/\n/g,"<br>")}</div>${evidence}`;
+  const tp=report.threePalace, fs=report.fengShuiPlan;
+  document.getElementById("resultList").innerHTML=`<div class="item"><strong>三宮摘要</strong>鎖定 ${escapeHTML(tp.lockPalace.key)}宮｜本人 ${escapeHTML(tp.selfPalace.key)}宮｜事情 ${escapeHTML(tp.matterPalace.key)}宮。${escapeHTML(tp.relationSelfMatter.text)}</div><div class="item action"><strong>今天先做 3 條</strong>${escapeHTML(compactBulletBlock(report.actionPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>今天先避 3 條</strong>${escapeHTML(compactBulletBlock(report.avoidPlan,3)).replace(/\n/g,"<br>")}</div><div class="item action"><strong>風水三方位</strong>啟動方：${escapeHTML(fs.activateChoice.direction)}｜安靜方：${escapeHTML(fs.quietChoice.direction)}｜避動方：${escapeHTML(fs.avoidChoice.direction)}</div>${todayCards}<div class="item"><strong>用途權重</strong>基礎分 ${report.scoreBreakdown.baseScore}｜用途加權 ${report.scoreBreakdown.qtypeScore>=0?"+":""}${report.scoreBreakdown.qtypeScore}｜嚴重度 ${escapeHTML(report.severity.level)}</div>${evidence}`;
 }
 function todayReportBlock(report){
   const t=report.todayAdvice;
@@ -1052,7 +1206,7 @@ function compactText(text,max=260){
   return (last>80?cut.slice(0,last):cut).replace(/[。；，]+$/,"")+"。";
 }
 function compactBulletBlock(text,count=3){
-  const parts=String(text||"").split(/\n|。/).map(cleanSentence).filter(Boolean);
+  const parts=String(text||"").split(/\n|。/).map(x=>cleanSentence(String(x).replace(/^[-•]\s*/,""))).filter(Boolean);
   return uniqueText(parts).slice(0,count).map(x=>`- ${x}。`).join("\n");
 }
 function shortEvidenceBlock(report,count=3){
@@ -1076,36 +1230,65 @@ function teacherLayerArticle(report,p,qtype){
     `第七步，套回題型。\n本題問「${qtype}」。所以同一個景門，問工作要看簡報、報告、主管回覆；問感情才看面子、聊天紀錄與說法。`
   ].join("\n\n");
 }
+function palaceLine(label,p){
+  if(!p)return `${label}：待確認`;
+  return `${label}：${p.key}${p.number}宮｜${p.direction}｜${p.element}｜${[p.door,p.star,p.god].filter(Boolean).join("、")}`;
+}
+function threePalaceText(report){
+  const t=report.threePalace||{};
+  return [
+    palaceLine("鎖定宮",t.lockPalace),
+    palaceLine("本人宮",t.selfPalace),
+    palaceLine("事情宮",t.matterPalace),
+    `本人與事情：${t.relationSelfMatter?.text||"待確認"}`,
+    `鎖定與事情：${t.relationLockMatter?.text||"待確認"}`
+  ].join("\n");
+}
+function fengShuiStructuredText(report){
+  const f=report.fengShuiPlan||{};
+  const row=(label,item)=>item?`${label}：${item.direction}（${item.palace}宮）\n原因：${item.reason}\n可做：${(item.do||[]).join("、")||"保持乾淨"}\n避免：${(item.avoid||[]).join("、")||"不要重押"}`:"";
+  return [row("啟動方",f.activateChoice),row("安靜方",f.quietChoice),row("避動方",f.avoidChoice)].filter(Boolean).join("\n\n")||report.fengShui;
+}
+function ruleTraceText(report,limit=8){
+  const trace=report.ruleTrace||report.scoreBreakdown?.ruleTrace||[];
+  if(!trace.length)return shortEvidenceBlock(report,limit);
+  return trace.slice(0,limit).map((r,i)=>`${i+1}. ${r.source}｜${r.symbol}｜${r.value>0?"+":""}${r.value}：${r.reason}`).join("\n");
+}
 function formatNinePartReport(report,question,mode="detail"){
   const title="詳細報告";
   return [
     title,
     taixuReportIntro("detail"),
     question?`問事：${question}`:"",
-    `一、一句話總斷\n${report.headline}\n分數與傾向：${report.score}/100｜${report.level}`,
-    `二、目前狀態\n${report.present}`,
-    `三、主要阻礙\n${report.obstacle}`,
-    `四、可用機會\n${report.opportunity}`,
-    `五、今日行動建議\n${report.actionPlan}`,
-    `六、今日不宜\n${report.avoidPlan}`,
-    `七、風水改善\n${report.fengShui}`,
-    `八、驗證點\n${listText(report.verifyPoints)}`,
-    `九、解盤依據\n${reportEvidenceBlock(report,mode)}`
+    `零、問題診斷\n建議用途：${report.problemDiagnosis.suggestedQtype}｜信心：${report.problemDiagnosis.confidence}｜問題型態：${report.problemDiagnosis.decisionIntent}\n風險類型：${(report.problemDiagnosis.riskTypes||[]).join("、")||"待觀察"}\n建議追問：${(report.problemDiagnosis.followUps||[]).join("；")||"問題已足夠明確。"}`,
+    `一、一句話總斷\n${report.headline}\n分數與傾向：${report.score}/100｜${report.level}\n基礎分：${report.scoreBreakdown.baseScore}｜用途加權：${report.scoreBreakdown.qtypeScore}｜嚴重度：${report.severity.level}`,
+    `二、此事主題\n${report.todayAdvice.topic}。本題以「${chart.settings.qtype}」看，重點是${qtypeRule(chart.settings.qtype).tone}。`,
+    `三、本人狀態（日干宮）\n${palaceLine("本人宮",report.threePalace.selfPalace)}\n${report.threePalace.relationSelfMatter.text}`,
+    `四、事情本體（時干/題型用神宮）\n${palaceLine("事情宮",report.threePalace.matterPalace)}\n${matterSymbolsForQtype(chart.settings.qtype).join("、")}為本題暫定用神，仍待案例校準。`,
+    `五、直覺鎖定宮\n${palaceLine("鎖定宮",report.threePalace.lockPalace)}\n${report.palaceSummary}`,
+    `六、三宮關係\n${threePalaceText(report)}`,
+    `七、可用機會\n${report.opportunity}`,
+    `八、主要風險\n${report.obstacle}\n${(report.severity.reasons||[]).join(" ")}`,
+    `九、今日行動\n${report.actionPlan}`,
+    `十、今日避忌\n${report.avoidPlan}`,
+    `十一、風水三方位\n${fengShuiStructuredText(report)}`,
+    `十二、驗證點\n${listText(report.verifyPoints)}`,
+    `十三、解盤依據\n${reportEvidenceBlock(report,mode)}\n\n用途權重軌跡：\n${ruleTraceText(report,12)}`
   ].filter(Boolean).join("\n\n");
 }
 function formatSimpleReport(report,question){
   return [
     "簡略報告",
-    taixuReportIntro("simple"),
     question?`問事：${question}`:"",
-    `結論\n${report.headline}`,
-    `傾向\n${report.score}/100｜${report.level}`,
-    `現在最重要的事\n${compactText(report.present,220)}`,
+    `問題診斷\n建議用途：${report.problemDiagnosis.suggestedQtype}｜${report.problemDiagnosis.decisionIntent}｜風險：${(report.problemDiagnosis.riskTypes||[]).slice(0,3).join("、")||"待觀察"}`,
+    `一句話總斷\n${report.headline}`,
+    `傾向\n${report.score}/100｜${report.level}｜用途加權 ${report.scoreBreakdown.qtypeScore>=0?"+":""}${report.scoreBreakdown.qtypeScore}`,
+    `三宮\n鎖定：${report.threePalace.lockPalace.key}宮｜本人：${report.threePalace.selfPalace.key}宮｜事情：${report.threePalace.matterPalace.key}宮\n${compactText(report.threePalace.relationSelfMatter.text,120)}`,
     `今天先做\n${compactBulletBlock(report.actionPlan,3)}`,
     `今天先避開\n${compactBulletBlock(report.avoidPlan,3)}`,
-    `風水微調\n${compactText(report.fengShui,220)}`,
+    `風水三方位\n啟動：${report.fengShuiPlan.activateChoice.direction}｜安靜：${report.fengShuiPlan.quietChoice.direction}｜避動：${report.fengShuiPlan.avoidChoice.direction}`,
     `驗證\n${listText(report.verifyPoints.slice(0,2))}`,
-    `主要依據\n${shortEvidenceBlock(report,3)}`
+    `主要依據\n${ruleTraceText(report,3)}`
   ].filter(Boolean).join("\n\n");
 }
 function formatDetailReport(report,question,m){return formatNinePartReport(report,question,"detail")}
@@ -1119,6 +1302,7 @@ function formatTeacherReport(report,question,m,p){
     `鎖定宮位\n${report.palaceSummary}`,
     `盤面骨架\n${p.key}宮、${p.door||"無門"}、${p.star||"無星"}、${p.god||"無神"}、${stems}\n特殊象：${p.flags.length?p.flags.map(flagText).join("；"):"無明顯空亡、入墓、門迫、擊刑、驛馬標記。"}`,
     `老師總斷\n${report.headline}\n分數不是命令，只是目前能量天平的傾向：${report.score}/100｜${report.level}`,
+    `太極三宮\n${threePalaceText(report)}`,
     `這盤怎麼讀\n${teacherLayerArticle(report,p,chart.settings.qtype)}`,
     `取用方法\n${report.actionPlan}`,
     `避險方法\n${report.avoidPlan}`,
@@ -1128,10 +1312,10 @@ function formatTeacherReport(report,question,m,p){
   ].filter(Boolean).join("\n\n");
 }
 function compareEvidenceText(ctx){
-  return [
-    `${ctx.A.side}｜${ctx.A.name}\n${shortEvidenceBlock(ctx.A.report,4)}`,
-    `${ctx.B.side}｜${ctx.B.name}\n${shortEvidenceBlock(ctx.B.report,4)}`
-  ].join("\n\n");
+  return ctx.ranked.map(choice=>`${choice.side}｜${choice.name}\n決策分：${choice.decision.decisionScore}/100｜可逆：${choice.decision.reversibility}｜成本：${choice.decision.cost}｜風險：${choice.decision.risk}\n${shortEvidenceBlock(choice.report,4)}`).join("\n\n");
+}
+function compareChoiceUseBlock(choice){
+  return `${choice.side}｜${choice.name}\n取用：${compareActionText(choice)}\n避開：${compareRiskText(choice)}\n驗證：${choice.decision.verifyPoint}`;
 }
 function formatCompareSimpleReport(ctx){
   return [
@@ -1140,36 +1324,35 @@ function formatCompareSimpleReport(ctx){
     `比較結論\n${compareSummaryText(ctx)}`,
     `推薦理由\n${ctx.winner.name}目前較可用；${ctx.winner.report.headline}`,
     `另一選項風險\n${ctx.weaker.name}不是完全不能選，但要先處理：${compareRiskText(ctx.weaker)}`,
-    `今天怎麼做\n- 先以${ctx.winner.name}為主線小步推進。\n- ${compareActionText(ctx.winner)}\n- 若仍想選${ctx.weaker.name}，先縮小投入、延後承諾、補齊條件。`,
+    `今天怎麼做\n- ${compareLeadAction(ctx.winner)}\n- ${compareActionText(ctx.winner)}\n- 若仍想選${ctx.weaker.name}，先縮小投入、延後承諾、補齊條件。`,
+    `選項排序\n${ctx.ranked.map((choice,i)=>`${i+1}. ${choice.side}｜${choice.name}｜決策 ${choice.decision.decisionScore}/100｜盤面 ${choice.score}/100｜${choice.decision.notes.join("、")}`).join("\n")}`,
     `主要依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
 }
 function formatCompareDetailReport(ctx){
+  const stateBlocks=ctx.ranked.map((choice,i)=>`${i+2}、${choice.side}｜${choice.name}目前狀態\n${choice.report.present}\n決策指標：決策 ${choice.decision.decisionScore}/100｜可逆 ${choice.decision.reversibility}｜成本 ${choice.decision.cost}｜風險 ${choice.decision.risk}`).join("\n\n");
+  const useBlocks=ctx.ranked.map((choice,i)=>`${i+1}. ${compareChoiceUseBlock(choice)}`).join("\n\n");
   return [
     "詳細比較報告",
     taixuReportIntro("detail"),
     ctx.question?`問事：${ctx.question}`:"",
     `一、比較總斷\n${compareSummaryText(ctx)}`,
-    `二、${ctx.A.name}目前狀態\n${ctx.A.report.present}`,
-    `三、${ctx.B.name}目前狀態\n${ctx.B.report.present}`,
+    stateBlocks,
     `四、為什麼推薦${ctx.winner.name}\n${ctx.verdict}\n${ctx.winner.report.opportunity}`,
-    `五、${ctx.A.name}主要風險\n${ctx.A.report.obstacle}`,
-    `六、${ctx.B.name}主要風險\n${ctx.B.report.obstacle}`,
-    `七、若選${ctx.A.name}\n${compareActionText(ctx.A)}\n避開：${compareRiskText(ctx.A)}`,
-    `八、若選${ctx.B.name}\n${compareActionText(ctx.B)}\n避開：${compareRiskText(ctx.B)}`,
-    `九、回驗方式\n- 看哪個選項先出現明確回覆、文件、款項或可執行條件。\n- 看哪個選項的阻礙先被降級。\n- 事後回填結果，記錄應在 A 還是 B。`,
+    `五、主要風險排序\n${ctx.ranked.map(choice=>`${choice.side}｜${choice.name}：${choice.report.obstacle}`).join("\n")}`,
+    `六、各選項取用方法\n${useBlocks}`,
+    `九、回驗方式\n- 看哪個選項先出現明確回覆、文件、款項或可執行條件。\n- 看哪個選項的阻礙先被降級。\n- 事後回填結果，記錄實際應在哪個選項。`,
     `十、比較依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
 }
 function formatCompareTeacherReport(ctx){
   return [
     "老師教學比較",
-    "這是同一件事的兩個選項，所以不能分開起兩張盤亂比。正確讀法是：同一張盤、同一個時間、同一個題型，分別看 A、B 兩個鎖定宮位。",
+    "這是同一件事的多個選項，所以不能分開起多張盤亂比。正確讀法是：同一張盤、同一個時間、同一個題型，分別看每個選項的鎖定宮位，再比較可逆性、成本、風險與驗證點。",
     ctx.question?`問事：${ctx.question}`:"",
-    `第一步，先看兩個宮位\nA 是 ${ctx.A.name}：${ctx.A.num} 號，鎖 ${ctx.A.palace.key}${ctx.A.palace.number}宮，${ctx.A.score}/100｜${ctx.A.grade}。\nB 是 ${ctx.B.name}：${ctx.B.num} 號，鎖 ${ctx.B.palace.key}${ctx.B.palace.number}宮，${ctx.B.score}/100｜${ctx.B.grade}。`,
-    `第二步，看勝負不是只看分數\n${ctx.verdict}\n分數差距：${ctx.diff}。差距小於 10 時，不宜硬說誰一定贏；要看條件是否清楚、風險是否容易降級。`,
-    `第三步，看 A 的用法\n${ctx.A.report.headline}\n取用：${compareActionText(ctx.A)}\n避險：${compareRiskText(ctx.A)}`,
-    `第四步，看 B 的用法\n${ctx.B.report.headline}\n取用：${compareActionText(ctx.B)}\n避險：${compareRiskText(ctx.B)}`,
+    `第一步，先看各選項宮位\n${ctx.ranked.map(choice=>`${choice.side} 是 ${choice.name}：${choice.num} 號，鎖 ${choice.palace.key}${choice.palace.number}宮，盤面 ${choice.score}/100｜決策 ${choice.decision.decisionScore}/100｜${choice.grade}。`).join("\n")}`,
+    `第二步，看勝負不是只看盤面分數\n${ctx.verdict}\n決策分差距：${ctx.diff}。差距小於 10 時，不宜硬說誰一定贏；要看條件是否清楚、風險是否容易降級。`,
+    `第三步，看每個選項的用法\n${ctx.ranked.map(compareChoiceUseBlock).join("\n\n")}`,
     `第五步，落到現實決策\n先選${ctx.winner.name}作主線，但不要把${ctx.weaker.name}完全丟掉；如果現實條件反而是${ctx.weaker.name}先落實，就用小步試做驗證，不要一次重押。`,
     `逐條依據\n${compareEvidenceText(ctx)}`
   ].filter(Boolean).join("\n\n");
@@ -1189,24 +1372,28 @@ function makeReport(mode=reportMode){
   if(mode==="teacher")return formatTeacherReport(report,question,m,p);
   return formatDetailReport(report,question,m);
 }
-function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), chart, selectedNum, compareSelections:isCompareChart()?compareOptions():null, report:chart?makeReport(reportMode):null}}
+function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), question:chart?.question||questionText(), problemDiagnosis:chart?.problemDiagnosis||diagnoseQuestion(questionText()), chart, selectedNum, compareSelections:isCompareChart()?compareOptions():null, report:chart?makeReport(reportMode):null}}
 function currentCase(){
   if(!chart||(!selectedNum&&!isCompareChart()))throw new Error("請先起盤並選數字。");
   if(isCompareChart()){
     const ctx=buildCompareContext();
     const feedback=caseFeedbackFromForm();
-    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:`A ${ctx.A.name}:${ctx.A.palace.key}${ctx.A.palace.number}｜B ${ctx.B.name}:${ctx.B.palace.key}${ctx.B.palace.number}`,result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,compare:{A:{name:ctx.A.name,num:ctx.A.num,score:ctx.A.score,palace:`${ctx.A.palace.key}${ctx.A.palace.number}`},B:{name:ctx.B.name,num:ctx.B.num,score:ctx.B.score,palace:`${ctx.B.palace.key}${ctx.B.palace.number}`},winner:ctx.winner.side},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
+    const compareRecord=Object.fromEntries(ctx.choices.map(choice=>[choice.side,{name:choice.name,num:choice.num,score:choice.score,decisionScore:choice.decision.decisionScore,palace:`${choice.palace.key}${choice.palace.number}`,decision:choice.decision}]));
+    return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`比較｜${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum:null,lockedPalace:ctx.choices.map(choice=>`${choice.side} ${choice.name}:${choice.palace.key}${choice.palace.number}`).join("｜"),selfPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.selfPalace.key}`).join("｜"),matterPalace:ctx.choices.map(choice=>`${choice.side} ${choice.report.threePalace.matterPalace.key}`).join("｜"),result:`推薦 ${ctx.winner.side}｜${ctx.winner.name}`,summary:ctx.verdict,threePalaceSnapshot:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.threePalace])),scoreBreakdown:Object.fromEntries(ctx.choices.map(choice=>[choice.side,choice.report.scoreBreakdown])),decisionOptions:ctx.ranked.map(choice=>({side:choice.side,name:choice.name,num:choice.num,palace:`${choice.palace.key}${choice.palace.number}`,score:choice.score,decision:choice.decision})),userFeedback:feedback,compare:{...compareRecord,winner:ctx.winner.side,ranking:ctx.ranked.map(choice=>choice.side)},report:formatCompareReport(reportMode),feedback,payload:chartPayload()};
   }
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   const feedback=caseFeedbackFromForm();
-  return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum,lockedPalace:p?`${p.key}${p.number}`:"",result:s.denied?"強烈不建議":`${s.score}/100 ${s.grade.name}`,summary:report.headline,report,feedback,payload:chartPayload()};
+  return {id:`case-${Date.now()}`,savedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),reportVersion:"soul-report.v5",ruleVersion:RULE_VERSION,qtypeApplied:true,title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,outcome:feedback.outcome,userOutcome:feedback.outcome,afterAction:feedback.afterAction,problemDiagnosis:chart.problemDiagnosis||diagnoseQuestion(chart.question||questionText()),qtype:chart.settings.qtype,question:chart.question||questionText(),selectedNum,lockedPalace:p?`${p.key}${p.number}`:"",selfPalace:report.threePalace.selfPalace?`${report.threePalace.selfPalace.key}${report.threePalace.selfPalace.number}`:"",matterPalace:report.threePalace.matterPalace?`${report.threePalace.matterPalace.key}${report.threePalace.matterPalace.number}`:"",result:s.denied?"強烈不建議":`${s.score}/100 ${s.grade.name}`,summary:report.headline,threePalaceSnapshot:report.threePalace,scoreBreakdown:report.scoreBreakdown,userFeedback:feedback,report,feedback,payload:chartPayload()};
 }
 function caseFeedbackFromForm(){
   return {
     outcome:(document.getElementById("caseOutcome")?.value||"").trim(),
     accuracy:document.getElementById("caseAccuracy")?.value||"",
     hitArea:document.getElementById("caseHitArea")?.value||"",
-    notes:(document.getElementById("caseNotes")?.value||"").trim()
+    notes:(document.getElementById("caseNotes")?.value||"").trim(),
+    afterAction:(document.getElementById("caseAfterAction")?.value||"").trim(),
+    verifiedSymbol:(document.getElementById("caseVerifiedSymbol")?.value||"").trim(),
+    riskReduced:document.getElementById("caseRiskReduced")?.value||""
   };
 }
 function fillCaseForm(c){
@@ -1215,6 +1402,9 @@ function fillCaseForm(c){
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value=c?.feedback?.accuracy||"";
   const area=document.getElementById("caseHitArea"); if(area)area.value=c?.feedback?.hitArea||"";
   const notes=document.getElementById("caseNotes"); if(notes)notes.value=c?.feedback?.notes||"";
+  const after=document.getElementById("caseAfterAction"); if(after)after.value=c?.feedback?.afterAction||c?.afterAction||"";
+  const symbol=document.getElementById("caseVerifiedSymbol"); if(symbol)symbol.value=c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"";
+  const risk=document.getElementById("caseRiskReduced"); if(risk)risk.value=c?.feedback?.riskReduced||c?.riskReduced||"";
 }
 function clearCaseFeedbackForm(){
   document.getElementById("caseTitle").value="";
@@ -1222,6 +1412,9 @@ function clearCaseFeedbackForm(){
   const acc=document.getElementById("caseAccuracy"); if(acc)acc.value="";
   const area=document.getElementById("caseHitArea"); if(area)area.value="";
   const notes=document.getElementById("caseNotes"); if(notes)notes.value="";
+  const after=document.getElementById("caseAfterAction"); if(after)after.value="";
+  const symbol=document.getElementById("caseVerifiedSymbol"); if(symbol)symbol.value="";
+  const risk=document.getElementById("caseRiskReduced"); if(risk)risk.value="";
 }
 function saveCurrentCase(){
   try{
@@ -1234,23 +1427,123 @@ function updateCaseResult(){
   const cases=loadCases(); const idx=cases.findIndex(c=>c.id===activeCaseId);
   if(idx<0){toast("找不到目前回看的案例。"); return}
   const feedback=caseFeedbackFromForm();
-  cases[idx]={...cases[idx],title:document.getElementById("caseTitle").value.trim()||cases[idx].title,outcome:feedback.outcome,feedback,updatedAt:new Date().toISOString()};
+  cases[idx]={...cases[idx],title:document.getElementById("caseTitle").value.trim()||cases[idx].title,outcome:feedback.outcome,afterAction:feedback.afterAction,verifiedSymbol:feedback.verifiedSymbol,riskReduced:feedback.riskReduced,userFeedback:feedback,feedback,updatedAt:new Date().toISOString()};
   saveCases(cases); renderCases(); toast("回驗結果已更新。");
+}
+function caseAccuracyValue(c){
+  const value=Number(c?.feedback?.accuracy||c?.userFeedback?.accuracy||c?.accuracy||"");
+  return Number.isFinite(value)&&value>=1&&value<=5?value:null;
+}
+function incrementBucket(map,key,value){
+  const name=key||"未分類";
+  const item=map.get(name)||{name,count:0,sum:0,accuracyCount:0};
+  item.count+=1;
+  if(value!==null){item.sum+=value; item.accuracyCount+=1}
+  map.set(name,item);
+}
+function scoreTraceFromCase(c){
+  const raw=c?.scoreBreakdown;
+  if(!raw)return [];
+  if(Array.isArray(raw.ruleTrace))return raw.ruleTrace;
+  return Object.values(raw).flatMap(item=>Array.isArray(item?.ruleTrace)?item.ruleTrace:[]);
+}
+function rankedBuckets(map,limit=4){
+  return Array.from(map.values())
+    .sort((a,b)=>(b.accuracyCount-a.accuracyCount)||(b.count-a.count)||a.name.localeCompare(b.name,"zh-Hant"))
+    .slice(0,limit);
+}
+function riskReducedLabel(value){
+  return {yes:"有降低",partial:"部分降低",no:"沒有降低",unknown:"看不出來"}[value]||"未回填";
+}
+function caseStatsFromCases(cases){
+  const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),highTrace:new Map(),lowTrace:new Map()};
+  cases.forEach(c=>{
+    const accuracy=caseAccuracyValue(c);
+    const verifiedSymbol=(c?.feedback?.verifiedSymbol||c?.verifiedSymbol||"").trim();
+    const riskReduced=c?.feedback?.riskReduced||c?.riskReduced||"";
+    const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(c?.feedback?.hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced);
+    if(hasFeedback)stats.feedbackCount+=1;
+    if((c?.afterAction||c?.feedback?.afterAction||"").trim())stats.actionCount+=1;
+    if(verifiedSymbol){stats.verifiedSymbolCount+=1; incrementBucket(stats.byVerifiedSymbol,verifiedSymbol,accuracy);}
+    if(riskReduced){stats.riskReducedCount+=1; if(["yes","partial"].includes(riskReduced))stats.riskReducedPositive+=1; incrementBucket(stats.byRiskReduced,riskReducedLabel(riskReduced),accuracy);}
+    incrementBucket(stats.byQtype,c?.qtype||c?.problemDiagnosis?.suggestedQtype||"未分類",accuracy);
+    incrementBucket(stats.byHitArea,c?.feedback?.hitArea||"未分類",accuracy);
+    if(accuracy!==null){
+      stats.accuracyCount+=1; stats.accuracySum+=accuracy;
+      if(accuracy<=2)stats.lowAccuracy+=1;
+      if(accuracy>=4)stats.highAccuracy+=1;
+      const traceMap=accuracy>=4?stats.highTrace:accuracy<=2?stats.lowTrace:null;
+      if(traceMap)scoreTraceFromCase(c).forEach(trace=>incrementBucket(traceMap,String(trace).slice(0,34),null));
+    }
+  });
+  stats.averageAccuracy=stats.accuracyCount?stats.accuracySum/stats.accuracyCount:null;
+  return stats;
+}
+function calibrationHints(stats){
+  const hints=[];
+  if(stats.total<10)hints.push("案例少於 10 筆，只能當作個人校盤紀錄，暫不視為規則結論。");
+  if(stats.feedbackCount<3)hints.push("回填結果仍少，先補實際結果與準確度，再看哪類題型穩定。");
+  if(stats.lowAccuracy>0)hints.push(`已有 ${stats.lowAccuracy} 筆 2 星以下，建議回看題目是否問得太大、鎖宮是否選錯，或行動建議是否太積極。`);
+  if(stats.actionCount>0)hints.push(`已有 ${stats.actionCount} 筆填了是否照建議做，可用來分辨「判斷不準」和「行動未照做」兩種情況。`);
+  if(stats.verifiedSymbolCount>0)hints.push(`已有 ${stats.verifiedSymbolCount} 筆標註哪個象應驗，之後可用來校準「象落在哪個現實事件」。`);
+  if(stats.riskReducedCount>0)hints.push(`已有 ${stats.riskReducedCount} 筆風險降級回饋，這會比單看吉凶更接近決策輔助。`);
+  if(!hints.length)hints.push("目前回驗走向穩定，但仍建議累積到 30 筆以上再調整權重。");
+  return hints;
+}
+function renderBucketList(items){
+  if(!items.length)return "<span>待累積</span>";
+  return items.map(item=>{
+    const avg=item.accuracyCount?`｜均 ${formatNumber(item.sum/item.accuracyCount,1)} 星`:"";
+    return `<span>${escapeHTML(item.name)} ${item.count} 筆${escapeHTML(avg)}</span>`;
+  }).join("");
+}
+function renderCaseStats(allCases=loadCases()){
+  const box=document.getElementById("caseStats"); if(!box)return;
+  const stats=caseStatsFromCases(allCases);
+  if(!stats.total){
+    box.innerHTML=`<div class="case-empty">尚無回驗資料。儲存案例後，這裡會開始累積題型、準確度與行動回饋。</div>`;
+    return;
+  }
+  const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
+  const riskRate=stats.riskReducedCount?`${Math.round(stats.riskReducedPositive/stats.riskReducedCount*100)}%`:"待回填";
+  const topHigh=rankedBuckets(stats.highTrace,3).map(x=>x.name).join("、")||"待累積";
+  const topLow=rankedBuckets(stats.lowTrace,3).map(x=>x.name).join("、")||"待累積";
+  box.innerHTML=`<div class="case-stats-head">
+    <div><strong>回驗校準</strong><small>用案例慢慢修正判斷，不把少量資料當定論。</small></div>
+    <div class="case-stats-score">${escapeHTML(avg)}</div>
+  </div>
+  <div class="case-stats-grid">
+    <div><span>案例總數</span><strong>${stats.total}</strong></div>
+    <div><span>已回填</span><strong>${stats.feedbackCount}</strong></div>
+    <div><span>準確度</span><strong>${stats.accuracyCount}</strong></div>
+    <div><span>風險降低</span><strong>${escapeHTML(riskRate)}</strong></div>
+  </div>
+  <div class="case-stats-lines">
+    <p><strong>題型分布</strong>${renderBucketList(rankedBuckets(stats.byQtype,5))}</p>
+    <p><strong>應事分類</strong>${renderBucketList(rankedBuckets(stats.byHitArea,5))}</p>
+    <p><strong>應驗符號</strong>${renderBucketList(rankedBuckets(stats.byVerifiedSymbol,5))}</p>
+    <p><strong>風險降級</strong>${renderBucketList(rankedBuckets(stats.byRiskReduced,5))}</p>
+    <p><strong>高分常見依據</strong><span>${escapeHTML(topHigh)}</span></p>
+    <p><strong>低分待查依據</strong><span>${escapeHTML(topLow)}</span></p>
+  </div>
+  <ul class="case-hints">${calibrationHints(stats).map(h=>`<li>${escapeHTML(h)}</li>`).join("")}</ul>`;
 }
 function renderCases(){
   const box=document.getElementById("caseList"); if(!box)return;
+  const allCases=loadCases();
+  renderCaseStats(allCases);
   const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
-  const cases=loadCases().filter(c=>!query||[c.title,c.outcome,c.feedback?.hitArea,c.feedback?.notes,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query));
+  const cases=allCases.filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query));
   if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
-    const numLabel=c.compare?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
+    const numLabel=c.decisionOptions?c.decisionOptions.map(opt=>`${opt.side}${opt.num}`).join("/"):c.compare?.A&&c.compare?.B?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
     return `<div class="case-card" data-case-id="${escapeHTML(c.id)}">
     <div>
       <h3>${escapeHTML(c.title)}</h3>
-      <small>${escapeHTML(c.qtype)}｜${escapeHTML(c.lockedPalace)}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
+      <small>${escapeHTML(c.qtype)}｜鎖定 ${escapeHTML(c.lockedPalace)}｜本人 ${escapeHTML(c.selfPalace||"待確認")}｜事情 ${escapeHTML(c.matterPalace||"待確認")}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
       ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
-      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span></div>
+      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span><span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span></div>
       ${fb.notes?`<small>備註：${escapeHTML(fb.notes)}</small>`:""}
     </div>
     <div class="case-actions">
@@ -1273,12 +1566,14 @@ function init(){
   renderAll();
   showView("ask");
   document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.view)));
-  document.getElementById("quickExample").onclick=()=>{setSelectionMode("single"); compareSelections={A:null,B:null}; activeCompareSide="A"; setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
+  document.getElementById("quickExample").onclick=()=>{setSelectionMode("single"); compareSelections=blankCompareSelections(); activeCompareSide="A"; setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
   document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
+  document.getElementById("questionText").addEventListener("input",()=>{renderQuestionDiagnosis();});
+  document.getElementById("applyDiagnosisQtype").onclick=applyDiagnosisQtype;
   document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
   document.getElementById("resetInquiryAsk").onclick=resetInquiry;
   document.getElementById("resetInquiryChart").onclick=resetInquiry;
-  document.getElementById("printBtn").onclick=()=>window.print();
+  ["printBtnAsk","printBtnChart"].forEach(id=>{const btn=document.getElementById(id); if(btn)btn.onclick=()=>window.print();});
   document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").innerHTML=reportHTML(text); toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
   document.getElementById("downloadTxt").onclick=()=>download("九宮奇門報告.txt",makeReport());
   document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify(chartPayload(),null,2),"application/json;charset=utf-8");
@@ -1297,10 +1592,71 @@ function init(){
   }));
   document.getElementById("qtype").addEventListener("change",()=>{if(chart&&!inquiryLocked){chart.settings.qtype=document.getElementById("qtype").value; renderAll();}});
   document.getElementById("inquiryMode").addEventListener("change",()=>{if(!inquiryLocked)renderAll();});
-  document.getElementById("selectionMode").addEventListener("change",()=>{if(inquiryLocked)return; if(!isCompareMode()){compareSelections={A:null,B:null}; activeCompareSide="A"} renderAll();});
+  document.getElementById("selectionMode").addEventListener("change",()=>{if(inquiryLocked)return; if(!isCompareMode()){compareSelections=blankCompareSelections(); activeCompareSide="A"} renderAll();});
   document.querySelectorAll(".compare-side").forEach(btn=>btn.addEventListener("click",()=>{if(inquiryLocked)return; activeCompareSide=btn.dataset.side||"A"; renderAll();}));
-  ["optionAName","optionBName"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{if(chart&&isCompareChart()){chart.settings.compareOptions=compareOptions(); renderAll();}}));
+  compareSides().map(side=>`option${side}Name`).forEach(id=>document.getElementById(id).addEventListener("input",()=>{if(chart&&isCompareChart()){chart.settings.compareOptions=compareOptions(); renderAll();}}));
   ["doorMode","ziChange"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{if(chart)buildChart()}));
   registerServiceWorker();
+  runV5DevTests();
+}
+function testSamePalaceDifferentQtypeChangesScore(){
+  if(!chart)return true;
+  const p=(chart.palaces||[]).find(x=>!x.isCenter);
+  if(!p)return true;
+  const work=scorePalaceV5(p,"工作",{chart});
+  const money=scorePalaceV5(p,"財運",{chart});
+  console.assert(work.score!==money.score||work.qtypeScore!==money.qtypeScore,"V5: same palace should change when qtype changes.");
+  return work.score!==money.score||work.qtypeScore!==money.qtypeScore;
+}
+function testEmptyNotAlwaysDirectDeny(){
+  const p=(chart?.palaces||[]).find(x=>!x.isCenter) || {key:"坎",number:1,isCenter:false,god:"六合",star:"天心",door:"休門",top:["戊"],bottom:["乙"],flags:["空"]};
+  const sample={...p,god:p.god==="白虎"?"六合":p.god,star:p.star==="天芮"?"天心":p.star,door:p.door==="死門"?"休門":p.door,flags:unique([...(p.flags||[]).filter(f=>!["刑","迫"].includes(f)),"空"])};
+  const result=scorePalaceV5(sample,"風水",{chart});
+  console.assert(!result.directDeny && result.severity.level==="pending","V5: empty palace should be pending, not always direct deny.");
+  return !result.directDeny && result.severity.level==="pending";
+}
+function testThreePalaceFound(){
+  if(!chart||!selectedNum)return true;
+  const result=analyzeThreePalaces(chart,selectedNum,chart.settings.qtype);
+  console.assert(!!result.lockPalace&&!!result.selfPalace&&!!result.matterPalace,"V5: three palaces should be found.");
+  return !!result.lockPalace&&!!result.selfPalace&&!!result.matterPalace;
+}
+function testNoDuplicateIds(){
+  const ids=[...document.querySelectorAll("[id]")].map(el=>el.id);
+  const dupes=ids.filter((id,i)=>ids.indexOf(id)!==i);
+  console.assert(!dupes.length,`V5: duplicate ids found: ${dupes.join(", ")}`);
+  return !dupes.length;
+}
+function testReportContainsRequiredSections(){
+  if(!chart||!selectedNum)return true;
+  const text=makeReport("detail");
+  const required=["一句話總斷","此事主題","本人狀態","事情本體","直覺鎖定宮","三宮關係","可用機會","主要風險","今日行動","今日避忌","風水三方位","驗證點","解盤依據"];
+  const missing=required.filter(x=>!text.includes(x));
+  console.assert(!missing.length,`V5: report missing sections: ${missing.join(", ")}`);
+  return !missing.length;
+}
+function testCaseSaveAndReload(){
+  const payload={version:RULE_VERSION.app,cases:[{id:"v5-test",reportVersion:"soul-report.v5",threePalaceSnapshot:{},scoreBreakdown:{}}]};
+  console.assert(payload.version==="5.0"&&payload.cases[0].reportVersion==="soul-report.v5","V5: case payload shape should include report version.");
+  return payload.version==="5.0"&&payload.cases[0].reportVersion==="soul-report.v5";
+}
+function testCaseStatsAggregation(){
+  const stats=caseStatsFromCases([
+    {qtype:"感情",outcome:"有回覆",afterAction:"有照做",feedback:{accuracy:"4",hitArea:"感情",verifiedSymbol:"空亡應在延遲",riskReduced:"yes"},scoreBreakdown:{ruleTrace:["生門 +10","六合 +8"]}},
+    {qtype:"感情",outcome:"不準",feedback:{accuracy:"2",hitArea:"感情",verifiedSymbol:"驚門應在口舌",riskReduced:"no"},scoreBreakdown:{ruleTrace:["空亡 pending"]}}
+  ]);
+  const ok=stats.total===2&&stats.feedbackCount===2&&stats.accuracyCount===2&&stats.actionCount===1&&stats.verifiedSymbolCount===2&&stats.riskReducedCount===2&&stats.riskReducedPositive===1&&formatNumber(stats.averageAccuracy,1)==="3.0"&&stats.lowAccuracy===1&&stats.byQtype.get("感情")?.count===2&&stats.byVerifiedSymbol.get("空亡應在延遲")?.count===1;
+  console.assert(ok,"V5: case stats aggregation should count feedback, accuracy, actions and qtype buckets.");
+  return ok;
+}
+function runV5DevTests(){
+  if(!new URLSearchParams(location.search).has("devtest"))return;
+  testSamePalaceDifferentQtypeChangesScore();
+  testEmptyNotAlwaysDirectDeny();
+  testThreePalaceFound();
+  testNoDuplicateIds();
+  testReportContainsRequiredSections();
+  testCaseSaveAndReload();
+  testCaseStatsAggregation();
 }
 init();

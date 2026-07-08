@@ -1,9 +1,9 @@
 window.QIMEN_RULE_VERSION = {
-  app: "4.3",
-  lock: "lock-palace.v4.3",
-  scoring: "scoring.v4.3",
-  qtype: "qtype-rules.v4.3 待確認",
-  fengshui: "fengshui.v4.3"
+  app: "5.0",
+  lock: "lock-palace.v5.0",
+  scoring: "scoring.v5.0",
+  qtype: "qtype-rules.v5.0 待校準",
+  fengshui: "fengshui.v5.0"
 };
 
 window.QIMEN_RULE_FILES = [
@@ -14,4 +14,4 @@ window.QIMEN_RULE_FILES = [
   "rules/fengshui-rules.json"
 ];
 
-window.QIMEN_CASE_STORAGE_KEY = "qimen-jiugong-cases-v4";
+window.QIMEN_CASE_STORAGE_KEY = "qimen-jiugong-cases-v5";

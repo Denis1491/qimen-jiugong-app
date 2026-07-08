@@ -1,10 +1,10 @@
 {
-  "version": "rules.v4.3",
+  "version": "rules.v5.0",
   "files": [
     "lock-palace.json",
     "scoring.json",
     "qtype-rules.json",
     "fengshui-rules.json"
   ],
-  "note": "This index keeps rule data discoverable. The app keeps the current scoring behavior stable and does not apply qtype weights until sources are confirmed."
+  "note": "This index keeps rule data discoverable. V5.0 applies qtype weights while marking the values as pending calibration."
 }
