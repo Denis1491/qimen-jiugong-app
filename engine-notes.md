@@ -1,6 +1,12 @@
 # Engine Notes
 
-核心檔案：`index.html`
+核心檔案：
+
+- `index.html`: 畫面骨架。
+- `style.css`: 介面樣式。
+- `engine.js`: 規則版本、規則檔索引、案例庫儲存鍵。
+- `app.js`: 排盤、鎖單宮、報告、案例庫、匯入匯出。
+- `rules/*.json`: 規則版本與可維護資料。
 
 主要函式：
 
@@ -9,8 +15,9 @@
 - `yinpanJu(meta)`: 陰盤九宮起局。
 - `buildGround(ju,dun)`: 地盤干。
 - `buildChart()`: 生成完整盤面。
-- `scorePalace(p,qtype)`: 鎖單宮吉凶判斷；報數 5 改取坤二宮，中宮不直斷。
+- `scorePalace(p,qtype)`: 鎖單宮吉凶判斷；鎖宮轉換維持在底層，不在使用者介面說明。
 - `makeSummary(p,s)`: 行動與風水建議。
+- `saveCurrentCase()`, `renderCases()`, `restoreChartPayload(payload)`: 案例庫與 JSON 回看。
 
 目前已套用的九宮鎖單宮規則：
 
@@ -24,9 +31,15 @@
 2. `星門同轉`：八門與九星同轉。
 3. `傳統值使門`：用常見值使門步進法。
 
-後續正式商品化建議：
+V4.3 已完成：
 
-- 將演算法拆成 `engine.js`。
-- 將報數對宮、直接否定、分數規則拆成 JSON 可後台維護。
-- 增加會員、案例庫、手機 PWA、API 版本。
-- 若需與特定規則體系完全一致，需取得正式規則表與校準樣本。
+- 單檔頁面已拆成 HTML / CSS / engine.js / app.js。
+- 規則資料已拆成 JSON：`rules/lock-palace.json`、`rules/scoring.json`、`rules/qtype-rules.json`、`rules/fengshui-rules.json`。
+- 增加案例庫、盤面 JSON 匯入、案例 JSON 匯出、PWA manifest 與 service worker。
+- 增加 `tests/run-tests.js` 靜態校驗。
+
+後續待確認：
+
+- 用途差異權重仍缺來源，`qtype-rules.json` 保持待確認且目前不套用。
+- 若要與特定規則體系完全一致，需取得正式規則表與更多校準樣本。
+- 若要更進一步商品化，可再把 `app.js` 裡的排盤函式、儲存函式與 UI 渲染函式細拆成 `engine-core.js`、`storage.js`、`ui.js`。

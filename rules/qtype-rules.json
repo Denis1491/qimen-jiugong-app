@@ -1,0 +1,15 @@
+{
+  "version": "qtype-rules.v4.3",
+  "status": "待確認",
+  "description": "用途差異化權重資料位已建立，但缺少可引用來源；目前 app 不套用這些權重，只顯示用途語境。",
+  "types": {
+    "今日運勢": {"status": "待確認", "applyWeight": false},
+    "工作": {"status": "待確認", "applyWeight": false},
+    "財運": {"status": "待確認", "applyWeight": false},
+    "感情": {"status": "待確認", "applyWeight": false},
+    "合作": {"status": "待確認", "applyWeight": false},
+    "健康": {"status": "待確認", "applyWeight": false},
+    "風水": {"status": "待確認", "applyWeight": false},
+    "決策": {"status": "待確認", "applyWeight": false}
+  }
+}

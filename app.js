@@ -1,0 +1,435 @@
+﻿// ===== 基本常數 =====
+const STEMS = "甲乙丙丁戊己庚辛壬癸".split("");
+const BRANCHES = "子丑寅卯辰巳午未申酉戌亥".split("");
+const GZ60 = Array.from({length:60}, (_,i)=>STEMS[i%10]+BRANCHES[i%12]);
+const PALACE_ORDER = ["巽","離","坤","震","中","兌","艮","坎","乾"];
+const RING = ["坎","艮","震","巽","離","坤","兌","乾"];
+const PALACE_NUM = {"坎":1,"坤":2,"震":3,"巽":4,"中":5,"乾":6,"兌":7,"艮":8,"離":9};
+const NUM_PALACE = {1:"坎",2:"坤",3:"震",4:"巽",5:"中",6:"乾",7:"兌",8:"艮",9:"離"};
+const PALACE_DIR = {"坎":"北方","坤":"西南方","震":"東方","巽":"東南方","中":"中央","乾":"西北方","兌":"西方","艮":"東北方","離":"南方"};
+const PALACE_ELEM = {"坎":"水","坤":"土","震":"木","巽":"木","中":"土","乾":"金","兌":"金","艮":"土","離":"火"};
+const STAR_ORIGIN = {"坎":"天蓬","艮":"天任","震":"天沖","巽":"天輔","離":"天英","坤":"天芮","兌":"天柱","乾":"天心"};
+const DOOR_ORIGIN = {"坎":"休門","艮":"生門","震":"傷門","巽":"杜門","離":"景門","坤":"死門","兌":"驚門","乾":"開門"};
+const GROUND_STEMS = ["戊","己","庚","辛","壬","癸","丁","丙","乙"];
+const GOD_ORDER = ["值符","螣蛇","太陰","六合","白虎","玄武","九地","九天"];
+const HOUR_START_STEM = {"甲":"甲","己":"甲","乙":"丙","庚":"丙","丙":"戊","辛":"戊","丁":"庚","壬":"庚","戊":"壬","癸":"壬"};
+const MONTH_START_STEM = {"甲":"丙","己":"丙","乙":"戊","庚":"戊","丙":"庚","辛":"庚","丁":"壬","壬":"壬","戊":"甲","癸":"甲"};
+const MONTH_JIE = [
+  {name:"立春",m:2,d:4,branch:"寅",idx:0},{name:"驚蟄",m:3,d:6,branch:"卯",idx:1},{name:"清明",m:4,d:5,branch:"辰",idx:2},
+  {name:"立夏",m:5,d:6,branch:"巳",idx:3},{name:"芒種",m:6,d:6,branch:"午",idx:4},{name:"小暑",m:7,d:7,branch:"未",idx:5},
+  {name:"立秋",m:8,d:8,branch:"申",idx:6},{name:"白露",m:9,d:8,branch:"酉",idx:7},{name:"寒露",m:10,d:8,branch:"戌",idx:8},
+  {name:"立冬",m:11,d:7,branch:"亥",idx:9},{name:"大雪",m:12,d:7,branch:"子",idx:10},{name:"小寒",m:1,d:6,branch:"丑",idx:11}
+];
+const XUNS = [
+  {start:"甲子",hidden:"戊",kong:"戌亥",from:0},{start:"甲戌",hidden:"己",kong:"申酉",from:10},{start:"甲申",hidden:"庚",kong:"午未",from:20},
+  {start:"甲午",hidden:"辛",kong:"辰巳",from:30},{start:"甲辰",hidden:"壬",kong:"寅卯",from:40},{start:"甲寅",hidden:"癸",kong:"子丑",from:50}
+];
+const BRANCH_PALACE = {"子":"坎","丑":"艮","寅":"艮","卯":"震","辰":"巽","巳":"巽","午":"離","未":"坤","申":"坤","酉":"兌","戌":"乾","亥":"乾"};
+const STEM_TOMB = {"甲":"坤","乙":"乾","丙":"乾","丁":"艮","戊":"乾","己":"艮","庚":"艮","辛":"巽","壬":"巽","癸":"坤"};
+const STEM_PUNISH = {"壬":"巽","癸":"巽","戊":"震","己":"坤"};
+const DOOR_ELEM = {"休門":"水","生門":"土","傷門":"木","杜門":"木","景門":"火","死門":"土","驚門":"金","開門":"金"};
+const ELEM_KE = {"木":"土","土":"水","水":"火","火":"金","金":"木"};
+const ELEM_SHENG = {"木":"火","火":"土","土":"金","金":"水","水":"木"};
+const BRANCH_NO = {"子":1,"丑":2,"寅":3,"卯":4,"辰":5,"巳":6,"午":7,"未":8,"申":9,"酉":10,"戌":11,"亥":12};
+const CN_MONTH = ["","正月","二月","三月","四月","五月","六月","七月","八月","九月","十月","冬月","臘月"];
+const CN_DAY_PREFIX = ["初","十","廿","卅"];
+const CN_NUM = ["","一","二","三","四","五","六","七","八","九","十"];
+
+// 1900-2050 農曆資料，常見萬年曆編碼。1900-01-31 為農曆庚子年正月初一。
+const LUNAR_INFO = [
+0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
+0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,
+0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+0x14b63
+];
+
+// ===== 報數鎖單宮與紅綠規則：依使用者提供規則校準 =====
+const LOCK_NUM_TO_PALACE_NUM = {1:1,2:2,3:3,4:4,5:2,6:6,7:7,8:8,9:9};
+const DIRECT_DENY = {
+  god:new Set(["白虎"]),
+  star:new Set(["天蓬","天芮"]),
+  door:new Set(["死門"]),
+  stem:new Set(["庚"]),
+  flag:new Set(["空"])
+};
+const SCORE = {
+  door:{"開門":40,"休門":40,"生門":40,"死門":-100},
+  star:{"天輔":20,"天心":20,"天任":20,"天蓬":-100,"天芮":-100},
+  god:{"值符":20,"太陰":20,"六合":20,"九天":20,"白虎":-100},
+  stem:{"乙":10,"丙":10,"丁":10,"戊":10,"庚":-100},
+  flag:{"空":-100}
+};
+const RULE_VERSION = window.QIMEN_RULE_VERSION || {
+  app:"4.3",
+  lock:"lock-palace.v4.3",
+  scoring:"scoring.v4.3",
+  qtype:"qtype-rules.v4.3 待確認",
+  fengshui:"fengshui.v4.3"
+};
+const CASE_STORAGE_KEY = window.QIMEN_CASE_STORAGE_KEY || "qimen-jiugong-cases-v4";
+const DOOR_ADVICE = {
+  "開門":"適合開啟、見客、工作面試、談機會、做公開行動。",
+  "休門":"適合休整、談和、修復關係、養精蓄銳、低調處理。",
+  "生門":"適合求財、合作、報價、收款、增加資源與人脈。",
+  "景門":"適合文書、曝光、說明、簡報，但話要準、資料要留底。",
+  "杜門":"適合保密、整理、內部規劃，不宜硬推或逼對方表態。",
+  "傷門":"防衝突、急躁、受傷、破財；今天宜慢，不宜硬碰硬。",
+  "驚門":"防口舌、驚擾、訊息反覆；先查證再回覆。",
+  "死門":"適合收尾、結束、封存舊事，不宜開新局或重押。"
+};
+const GOD_ADVICE = {
+  "值符":"有主導力，可當主場使用，但要承擔責任。","六合":"利合作、人緣、和解、談條件。","太陰":"利暗中準備、文書細節、女性貴人。","九天":"利遠方、高目標、曝光與提升格局。","九地":"利穩守、存錢、打基礎、處理土地房屋。","螣蛇":"防糾纏、猜疑、虛驚與想太多。","玄武":"防隱瞞、口頭承諾、資訊不透明。","白虎":"防衝突、刀火金屬、受傷與強硬對抗。"
+};
+
+let chart = null;
+let selectedNum = null;
+let reportMode = "simple";
+
+// ===== 工具函數 =====
+function pad(n){return String(n).padStart(2,"0")}
+function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
+function unique(arr){return [...new Set(arr.filter(Boolean))]}
+function escapeHTML(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]))}
+function parseDT(){const v=document.getElementById("dt").value;if(!v)return null;const [date,time]=v.split("T");const [y,m,d]=date.split("-").map(Number);const [hh,mm]=time.split(":").map(Number);return {y,m,d,hh,mm}}
+function fmtDT(p){return `${p.y}-${pad(p.m)}-${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}`}
+function jdn(y,m,d){let a=Math.floor((14-m)/12);let y2=y+4800-a;let m2=m+12*a-3;return d+Math.floor((153*m2+2)/5)+365*y2+Math.floor(y2/4)-Math.floor(y2/100)+Math.floor(y2/400)-32045}
+function dateAddDays(p,delta){const dt=new Date(p.y,p.m-1,p.d+delta,p.hh||0,p.mm||0);return {y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate(),hh:dt.getHours(),mm:dt.getMinutes()}}
+function gzFromIndex(i){return GZ60[(i%60+60)%60]}
+function stemOf(gz){return gz?.[0]||""} function branchOf(gz){return gz?.[1]||""}
+function dayIndex(p,ziChange){const pp=(ziChange&&p.hh>=23)?dateAddDays(p,1):p;return (jdn(pp.y,pp.m,pp.d)+49)%60}
+function yearGZ(p){const useY=(p.m<2||(p.m===2&&p.d<4))?p.y-1:p.y;return gzFromIndex((useY-4)%60)}
+function monthInfo(p,yearStem){let info=MONTH_JIE[10]; for(const j of MONTH_JIE){ if(j.m===1) continue; if(p.m>j.m||(p.m===j.m&&p.d>=j.d)) info=j; } if(p.m===1&&p.d>=6) info=MONTH_JIE[11]; const start=MONTH_START_STEM[yearStem]||"丙"; const stem=STEMS[(STEMS.indexOf(start)+info.idx)%10]; return {stem,branch:info.branch,jie:info.name}}
+function hourGZ(p,dayStem){let bi=Math.floor((p.hh+1)/2)%12; if(p.hh===23)bi=0; const start=HOUR_START_STEM[dayStem]||"甲"; const stem=STEMS[(STEMS.indexOf(start)+bi)%10]; return stem+BRANCHES[bi]}
+function xunForGZ(gz){const idx=GZ60.indexOf(gz);return XUNS[Math.floor(idx/10)]||XUNS[0]}
+function normalizePalace(p){return p==="中"?"坤":p}
+function ringIndex(p){return RING.indexOf(normalizePalace(p))}
+function shiftPalace(p,delta){const i=ringIndex(p); if(i<0)return p; return RING[(i+delta+800)%8]}
+function palaceByNumber(n){return NUM_PALACE[Number(n)]||"中"}
+function numberSeq(ju,dun){let n=ju,seq=[]; for(let i=0;i<9;i++){seq.push(n); n=dun==="陽" ? (n%9)+1 : (n===1?9:n-1)} return seq}
+function addStem(map,p,stem){if(!stem)return; p=normalizePalace(p); if(!map[p])map[p]=[]; map[p].push(stem)}
+function buildGround(ju,dun){const nums=numberSeq(ju,dun); const g={}; nums.forEach((num,i)=>addStem(g,palaceByNumber(num),GROUND_STEMS[i])); return g}
+function findStemPalace(stem,map){for(const p of Object.keys(map)){ if((map[p]||[]).includes(stem))return p } return ""}
+function rotateMap(source,offset){const out={}; for(const p of RING){(source[p]||[]).forEach(st=>addStem(out,shiftPalace(p,offset),st))} return out}
+function doorOffsetFor(mode,xunPalace,xun,hgz,ju,dun,starOffset){
+  if(mode==="star") return starOffset;
+  if(mode==="classic"){
+    const step=(GZ60.indexOf(hgz)-xun.from+800)%8;
+    const target=shiftPalace(xunPalace,dun==="陽"?step:-step);
+    return ringIndex(target)-ringIndex(xunPalace);
+  }
+  // 九宮鎖單宮校準：依六甲遁干序數定八門偏移。此模式可對上使用者提供的兩張樣本盤。
+  return (STEMS.indexOf(xun.hidden)+1)%8;
+}
+function yimaByBranch(br){if(["申","子","辰"].includes(br))return "寅"; if(["寅","午","戌"].includes(br))return "申"; if(["亥","卯","未"].includes(br))return "巳"; if(["巳","酉","丑"].includes(br))return "亥"; return ""}
+
+// ===== 農曆 =====
+function leapMonth(y){return LUNAR_INFO[y-1900]&0xf}
+function leapDays(y){return leapMonth(y)?((LUNAR_INFO[y-1900]&0x10000)?30:29):0}
+function monthDays(y,m){return (LUNAR_INFO[y-1900]&(0x10000>>m))?30:29}
+function lunarYearDays(y){let sum=348; for(let i=0x8000;i>0x8;i>>=1){ if(LUNAR_INFO[y-1900]&i)sum++ } return sum+leapDays(y)}
+function solarToLunar(y,m,d){
+  if(y<1900||y>2050) throw new Error("農曆資料目前支援 1900-2050。")
+  const base=new Date(1900,0,31); const cur=new Date(y,m-1,d); let offset=Math.floor((cur-base)/86400000);
+  let ly=1900; while(ly<2051 && offset>=lunarYearDays(ly)){offset-=lunarYearDays(ly); ly++}
+  const leap=leapMonth(ly); let isLeap=false; let lm=1;
+  while(lm<=12){const md=isLeap?leapDays(ly):monthDays(ly,lm); if(offset<md)break; offset-=md; if(leap===lm&&!isLeap){isLeap=true}else{if(isLeap)isLeap=false; lm++}}
+  return {year:ly,month:lm,day:offset+1,isLeap};
+}
+function cnDay(d){if(d===10)return "初十"; if(d===20)return "二十"; if(d===30)return "三十"; return CN_DAY_PREFIX[Math.floor(d/10)] + CN_NUM[d%10]}
+function lunarText(l){return `${l.year}年 ${l.isLeap?"閏":""}${CN_MONTH[l.month]} ${cnDay(l.day)}`}
+function yinpanJu(meta){const yNo=BRANCH_NO[meta.yearBranch], mNo=meta.lunar.month, dNo=meta.lunar.day, hNo=BRANCH_NO[meta.hourBranch]; let r=(yNo+mNo+dNo+hNo)%9; if(r===0)r=9; return {num:r, formula:`${meta.yearBranch}${yNo}＋農${mNo}月＋農${dNo}日＋${meta.hourBranch}${hNo}＝${yNo+mNo+dNo+hNo}，除9餘${r}`}}
+
+// ===== 排盤 =====
+function buildChart(){
+  try{
+    const p=parseDT(); if(!p){alert("請輸入起盤時間");return}
+    const ziChange=document.getElementById("ziChange").value==="true";
+    const yGZ=yearGZ(p); const yStem=stemOf(yGZ), yBranch=branchOf(yGZ);
+    const mInfo=monthInfo(p,yStem); const dIdx=dayIndex(p,ziChange); const dGZ=gzFromIndex(dIdx); const hGZ=hourGZ(p,stemOf(dGZ));
+    const lunar=solarToLunar(p.y,p.m,p.d); const metaBase={yearBranch:yBranch,lunar,hourBranch:branchOf(hGZ)}; const ju=yinpanJu(metaBase);
+    const dun="陰"; const xun=xunForGZ(hGZ); const ground=buildGround(ju.num,dun);
+    const xunPalace=normalizePalace(findStemPalace(xun.hidden,ground)||"坤");
+    const timeStem=stemOf(hGZ); const timeGroundStem=timeStem==="甲"?xun.hidden:timeStem; const timePalace=normalizePalace(findStemPalace(timeGroundStem,ground)||xunPalace);
+    const starOffset=ringIndex(timePalace)-ringIndex(xunPalace); const heaven=rotateMap(ground,starOffset);
+    const doorMode=document.getElementById("doorMode").value; const dOff=doorOffsetFor(doorMode,xunPalace,xun,hGZ,ju.num,dun,starOffset);
+    const starMap={},doorMap={},godMap={}; Object.entries(STAR_ORIGIN).forEach(([pal,s])=>starMap[shiftPalace(pal,starOffset)]=s); Object.entries(DOOR_ORIGIN).forEach(([pal,d])=>doorMap[shiftPalace(pal,dOff)]=d);
+    GOD_ORDER.forEach((g,i)=>godMap[shiftPalace(timePalace,dun==="陽"?i:-i)]=g);
+    const emptyBranches=xun.kong.split(""); const emptyPalaces=unique(emptyBranches.map(b=>BRANCH_PALACE[b])); const yima=yimaByBranch(branchOf(hGZ)); const yimaPalace=BRANCH_PALACE[yima];
+    const zhifu=STAR_ORIGIN[xunPalace]||""; const zhishi=DOOR_ORIGIN[xunPalace]||"";
+    const palaces=PALACE_ORDER.map(key=>{
+      if(key==="中") return {key,number:5,isCenter:true,flags:[],top:[],bottom:[],god:"",star:"",door:""};
+      const top=heaven[key]||[]; const bottom=ground[key]||[]; const door=doorMap[key]||""; const flags=[];
+      if(emptyPalaces.includes(key))flags.push("空"); if(yimaPalace===key)flags.push("馬");
+      const all=top.concat(bottom); if(all.some(st=>STEM_TOMB[st]===key))flags.push("墓"); if(all.some(st=>STEM_PUNISH[st]===key))flags.push("刑");
+      if(door){const de=DOOR_ELEM[door], pe=PALACE_ELEM[key]; if(ELEM_KE[de]===pe)flags.push("迫"); else if(ELEM_KE[pe]===de)flags.push("制")}
+      return {key,number:PALACE_NUM[key],god:godMap[key]||"",star:starMap[key]||"",door,top,bottom,flags:unique(flags)};
+    });
+    chart={
+      version:RULE_VERSION.app, ruleVersion:RULE_VERSION, settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange},
+      meta:{solar:fmtDT(p),lunar:lunarText(lunar),yearGZ:yGZ,yearStem:yStem,yearBranch:yBranch,monthStem:mInfo.stem,monthBranch:mInfo.branch,dayStem:stemOf(dGZ),dayBranch:branchOf(dGZ),hourStem:stemOf(hGZ),hourBranch:branchOf(hGZ),monthGZ:mInfo.stem+mInfo.branch,dayGZ:dGZ,hourGZ:hGZ,ju:`陰${CN_NUM[ju.num]}局`,juNum:ju.num,juFormula:ju.formula,xunshou:`${xun.start}旬`,futou:xun.hidden,kongwang:xun.kong,yima,zhifu,zhishi,xunPalace,timePalace,starOffset,doorOffset:dOff},
+      palaces
+    };
+    renderAll(); setNote(`已排：${yGZ}年 ${mInfo.stem+mInfo.branch}月 ${dGZ}日 ${hGZ}時；農曆${lunarText(lunar)}；${chart.meta.ju}；旬首${xun.start}、符頭${xun.hidden}、空亡${xun.kong}、驛馬${yima}。局數公式：${ju.formula}。`);
+  }catch(err){alert(err.message||err);}
+}
+
+// ===== 分數 =====
+function contribution(type,sym){return (SCORE[type]&&SCORE[type][sym])||0}
+function lockedPalaceNumber(n){return LOCK_NUM_TO_PALACE_NUM[Number(n)]||Number(n)}
+function denyReason(type,sym){return {"god":"大凶八神","star":"大凶九星","door":"大凶八門","stem":"大凶天干","flag":"大凶特殊象"}[type] + `：${sym}`}
+function scorePalace(p,qtype){
+  if(!p||p.isCenter)return {score:0,reasons:[{label:"中宮不用",value:0,text:"中宮不直接作鎖單宮判斷。"}],grade:grade(0)};
+  return scorePalaceRaw(p,qtype);
+}
+function scorePalaceRaw(p,qtype){
+  let score=0; const reasons=[]; const deniers=[];
+  function deny(type,sym,text){if(sym&&DIRECT_DENY[type]&&DIRECT_DENY[type].has(sym)){deniers.push({label:denyReason(type,sym),value:0,text})}}
+  function add(type,label,sym,text){const value=contribution(type,sym); if(value>0){score+=value; reasons.push({label,value,text})}}
+  deny("god",p.god,`${p.god}：PDF 規則列為綠色大凶，直接否定。`);
+  deny("star",p.star,`${p.star}：PDF 規則列為綠色大凶，直接否定。`);
+  deny("door",p.door,`${p.door}：PDF 規則列為綠色大凶，直接否定。`);
+  p.top.concat(p.bottom).forEach(st=>deny("stem",st,`${st}：PDF 規則列為綠色大凶天干，直接否定。`));
+  p.flags.forEach(f=>deny("flag",f,flagText(f)));
+  if(deniers.length)return {score:0,reasons:deniers,denied:true,deniers,grade:{name:"直接否定",cls:"score-bad"}};
+  add("god",p.god,p.god,`${p.god}：紅色吉神，有神助或人事助力。`);
+  add("star",p.star,p.star,`${p.star}：紅色吉星，事情有發展性。`);
+  add("door",p.door,p.door,`${p.door}：紅色吉門，門路、方法或行動方式可用。`);
+  p.top.concat(p.bottom).forEach(st=>add("stem",st,st,`${st}：紅色吉干，主機會、光明、轉機或財氣。`));
+  score=clamp(Math.round(score),0,100); return {score,reasons,denied:false,deniers:[],grade:grade(score)};
+}
+function grade(score){if(score>=80)return {name:"大吉",cls:"score-good"}; if(score>=60)return {name:"主吉",cls:"score-good"}; if(score>0)return {name:"未達 60",cls:"score-bad"}; return {name:"不採用",cls:"score-bad"}}
+function doorMeaning(d){return {"開門":"開啟、事業、門路、機會。","休門":"休整、和解、貴人、修復。","生門":"財源、資源、生機、合作利益。","景門":"文書、曝光、名聲、說明。","杜門":"閉塞、保密、內部、卡點。","傷門":"衝突、損傷、急躁、破耗。","驚門":"口舌、驚擾、消息反覆。","死門":"停滯、結束、舊事、僵局。"}[d]||""}
+function starMeaning(s){return {"天心":"理性、醫藥、管理、方案。","天輔":"文教、輔助、貴人、專業。","天任":"穩定、承擔、慢成。","天英":"表現、名聲、靈感、火氣。","天沖":"行動、突發、衝勁。","天蓬":"風險、欲望、暗流。","天芮":"病符、問題、瑕疵。","天柱":"口舌、壓力、阻隔。"}[s]||""}
+function flagText(f){return {"空":"空亡：事情未實、等待填實，不宜重押。","馬":"驛馬：有移動、變化、外出與轉換象。","墓":"入墓：氣被收住，進展慢，宜先整理。","刑":"擊刑：內部衝突、卡住或自我糾結。","迫":"門迫：門克宮，行動方式壓迫環境，易出問題。","制":"門制：宮克門，環境壓住行動，進展受限。"}[f]||f}
+function classByScore(type,sym){const v=(SCORE[type]&&SCORE[type][sym])||0; return v>0?"good-text":v<0?"bad-text":"neutral-text"}
+function flagClass(f){return DIRECT_DENY.flag.has(f)||["刑","迫","墓"].includes(f)?"bad":["馬"].includes(f)?"good":"warn"}
+function statusFor(type,sym){
+  if(!sym)return {label:"中",cls:"tag-neutral"};
+  if(type==="flag"){
+    if(DIRECT_DENY.flag.has(sym)||["刑","迫","墓"].includes(sym))return {label:sym,cls:"tag-risk"};
+    if(sym==="馬")return {label:sym,cls:"tag-good"};
+    return {label:sym,cls:"tag-warn"};
+  }
+  const v=contribution(type,sym);
+  if(v>0)return {label:"吉",cls:"tag-good"};
+  if(v<0)return {label:"凶",cls:"tag-risk"};
+  return {label:"中",cls:"tag-neutral"};
+}
+function tagFor(type,sym){const st=statusFor(type,sym); return `<span class="tag ${st.cls}">${st.label}</span>`}
+function symbolText(type,sym){return `${escapeHTML(sym||"無")}${tagFor(type,sym)}`}
+function symbolBox(label,type,sym){return `<div class="symbol-box"><span>${label}</span><div class="symbol-value"><strong class="${classByScore(type,sym)}">${escapeHTML(sym||"無")}</strong>${tagFor(type,sym)}</div></div>`}
+function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
+
+// ===== 渲染 =====
+function renderAll(){renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases();}
+function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途待確認`}
+function setNote(t){document.getElementById("autoNote").textContent=t}
+function renderNums(){const pad=document.getElementById("numPad"); if(!pad.dataset.ready){pad.innerHTML=""; [1,2,3,4,5,6,7,8,9].forEach(n=>{const b=document.createElement("button"); b.className="num-btn"; b.textContent=String(n); b.onclick=()=>{selectedNum=n; renderAll()}; pad.appendChild(b)}); pad.dataset.ready="1"} Array.from(pad.children).forEach((b,i)=>{const n=i+1; b.classList.toggle("active",selectedNum===n)})}
+function renderMeta(){const box=document.getElementById("metaGrid"); if(!chart){box.innerHTML="";return} const m=chart.meta; const pairs=[["西元",m.solar],["農曆",m.lunar],["四柱",`${m.yearGZ}　${m.monthGZ}　${m.dayGZ}　${m.hourGZ}`],["起局",`${m.ju}｜陰盤`],["旬首",m.xunshou],["符頭",m.futou],["空亡",m.kongwang],["驛馬",m.yima],["值符",m.zhifu],["值使",m.zhishi],["局數公式",m.juFormula],["門法",document.getElementById("doorMode").selectedOptions[0].textContent]]; box.innerHTML=pairs.map(([a,b])=>`<div class="meta"><span>${a}</span><strong>${escapeHTML(b)}</strong></div>`).join(""); document.getElementById("chartBadge").textContent=`${m.ju}・${m.zhifu}・${m.zhishi}`; const ov=overallScore(); document.getElementById("metricOverall").textContent=`${ov}/100`;}
+function stemSpan(st,pal){const tags=[tagFor("stem",st)]; if(STEM_TOMB[st]===pal)tags.push(`<span class="small-tag tag-risk">墓</span>`); if(STEM_PUNISH[st]===pal)tags.push(`<span class="small-tag tag-risk">刑</span>`); const cls=classByScore("stem",st); return `<span class="${cls}">${st}</span>${tags.join("")}`}
+function stemGroup(stems,pal){return stems.length?stems.map(st=>stemSpan(st,pal)).join(""):`<span class="muted-text">無</span>`}
+function flagGroup(flags){return flags.length?flags.map(f=>`<span class="flag ${flagClass(f)}">${f}</span>`).join(""):`<span class="muted-text">無</span>`}
+function selectPalaceNumber(n){selectedNum=Number(n); renderAll();}
+function renderGrid(){const grid=document.getElementById("palaceGrid"); if(!chart){grid.innerHTML="<div class='palace center' style='grid-column:1/4'>請先輸入時間並開始排盤</div>"; return} const q=chart.settings.qtype; grid.innerHTML=chart.palaces.map(p=>{
+  const sel=lockedPalaceNumber(selectedNum)===p.number; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮</strong><br><span class="score-pill score-mid">5</span></div></div>`}
+  const s=scorePalaceRaw(p,q); const sc=s.score; const bg=s.denied||sc<60?"bad-bg":"good-bg"; const scoreText=s.denied?"否":sc;
+  return `<button type="button" class="palace ${bg} ${sel?"selected":""}" data-num="${p.number}" onclick="selectPalaceNumber(${p.number})" aria-label="鎖定${p.key}${p.number}宮">
+    <div class="palace-top"><span class="palace-id">${p.key}<small>${p.number}</small></span><span class="god ${classByScore("god",p.god)}">${symbolText("god",p.god)}</span></div>
+    <div class="palace-mid"><span class="sym ${classByScore("star",p.star)}">${symbolText("star",p.star)}</span><span class="stems">${stemGroup(p.top,p.key)}</span></div>
+    <div class="palace-bottom"><span class="sym ${classByScore("door",p.door)}">${symbolText("door",p.door)}</span><span class="stems muted-text">${stemGroup(p.bottom,p.key)}</span></div>
+    <div class="palace-top"><span class="flagrow">${flagGroup(p.flags)}</span><span class="palace-score">${scoreText}</span></div>
+  </button>`}).join("");
+}
+function getPalaceByNum(n){return chart?.palaces.find(p=>p.number===lockedPalaceNumber(n))||null}
+function renderLockedPanel(){
+  const box=document.getElementById("lockedPalacePanel"); if(!box)return;
+  if(!chart){box.innerHTML=`<div class="locked-empty">請先起盤，再選一個數字。</div>`; return}
+  if(!selectedNum){box.innerHTML=`<div class="locked-empty">請選 1-9。</div>`; return}
+  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s);
+  const statusClass=s.denied?"lock-denied":s.score>=60?"lock-good":"lock-bad";
+  const statusText=s.denied?"直接否定":`${s.score}/100｜${s.grade.name}`;
+  const reason=s.reasons.length?s.reasons.slice(0,3).map(r=>`<div class="symbol-box"><span>${escapeHTML(r.label)}</span><strong>${r.value>0?"+":""}${r.value}</strong></div>`).join(""):"";
+  box.innerHTML=`<div class="locked-card ${statusClass}">
+    <div class="locked-head">
+      <div class="locked-title"><div class="locked-num">${selectedNum}</div><div><h3>鎖 ${p.key}${p.number}宮</h3><small>${PALACE_DIR[p.key]}｜${PALACE_ELEM[p.key]}｜${chart.settings.qtype}</small></div></div>
+      <div class="locked-status">${statusText}</div>
+    </div>
+    <div class="locked-symbols">
+      ${symbolBox("八神","god",p.god)}
+      ${symbolBox("九星","star",p.star)}
+      ${symbolBox("八門","door",p.door)}
+      <div class="symbol-box"><span>天盤干</span><strong>${stemGroup(p.top,p.key)}</strong></div>
+      <div class="symbol-box"><span>地盤干</span><strong>${stemGroup(p.bottom,p.key)}</strong></div>
+      <div class="symbol-box"><span>特殊象</span><strong>${flagGroup(p.flags)}</strong></div>
+      ${reason}
+    </div>
+    <div class="locked-summary"><strong>總斷</strong>${escapeHTML(summary.total)}</div>
+  </div>`;
+}
+function renderResult(){
+  const metricLock=document.getElementById("metricLock"), metricScore=document.getElementById("metricScore");
+  if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; metricLock.textContent="未選數"; metricScore.textContent="—"; return}
+  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); metricLock.textContent=`${selectedNum}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"直接否定":s.score+"/100 "+s.grade.name}`;
+  document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${s.grade.name}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
+  document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">${p.key}${p.number}</span>`,`<span class="tab">${chart.settings.qtype}</span>`,`<span class="tab">${chart.meta.ju}</span>`].join("");
+  const summary = makeSummary(p,s);
+  document.getElementById("resultHeadline").textContent=`鎖 ${selectedNum}｜${p.key}宮｜${s.denied?"直接否定":s.score+"分 "+s.grade.name}｜${s.denied?"先暫停":"看建議行動"}`;
+  const reasonHtml=s.reasons.slice(0,9).map(r=>`<div class="item"><strong>${escapeHTML(r.label)} ${r.value>0?"+":""}${r.value}</strong>${escapeHTML(r.text)}</div>`).join("");
+  document.getElementById("resultList").innerHTML=`<div class="item"><strong>總斷</strong>${escapeHTML(summary.total)}</div><div class="item action"><strong>行動建議</strong>${escapeHTML(summary.action)}</div><div class="item action"><strong>風水改善</strong>${escapeHTML(summary.fengshui)}</div><div class="item"><strong>判斷依據</strong>${s.denied?"觸發直接否定條件。":"依吉象加分，未列入新的用途權重。"}</div>${reasonHtml}`;
+}
+function makeSummary(p,s){
+  const dir=PALACE_DIR[p.key]; if(s.denied){const hit=s.deniers.map(x=>x.label.split("：").pop()).join("、"); return {total:`鎖 ${selectedNum} 入 ${p.key}宮，見 ${hit}，依直接否定法判為不宜採用。`, action:"先暫停，不硬推。若是重要決策，換時間再問，或先排除風險、確認資訊後再行動。", fengshui:`${dir}今日宜靜不宜動：保持乾淨、避免敲打修繕、避免在此方爭吵或做大額決定。`}}
+  const good=s.score>=60, bad=s.score<60;
+  let total=good?`鎖 ${selectedNum} 入 ${p.key}宮，${dir}可用，紅色吉符號合計 ${s.score} 分，達 60 分以上，主吉。`:`鎖 ${selectedNum} 入 ${p.key}宮，${dir}紅色吉符號合計 ${s.score} 分，未達 60 分，主凶或成功率不足。`;
+  let action=`${DOOR_ADVICE[p.door]||"先看門星神與空墓刑迫。"} ${GOD_ADVICE[p.god]||""}`;
+  if(p.flags.includes("空")) action += " 此宮逢空，承諾與消息要等白紙黑字，不宜一次押重。";
+  if(p.flags.includes("迫")||p.flags.includes("刑")) action += " 有迫或刑，說話、簽約、開車與金錢動作都要慢。";
+  if(p.flags.includes("馬")) action += " 有驛馬，可用於出門、移動、轉換，但要先確認路線與時間。";
+  let fengshui = good ? `${dir}今日可輕度啟動：整理乾淨、開燈 15-30 分鐘、放正在使用的文件或計畫；若談合作財務，可面向此方發訊息。` : `${dir}今日宜靜不宜動：收雜物、關櫃門、移開尖銳物，不在此方爭吵、敲打、修繕或做大額決定。`;
+  const elem=PALACE_ELEM[p.key]; if(good){ if(elem==="木")fengshui += " 可放健康綠植或木質物。"; if(elem==="火")fengshui += " 可用溫和燈光，不用強光。"; if(elem==="土")fengshui += " 可放陶瓷、石材或穩重物件。"; if(elem==="金")fengshui += " 可用白色、金屬或圓形物件。"; if(elem==="水")fengshui += " 可放一杯乾淨清水，但不可髒水或漏水。"}
+  return {total,action,fengshui}
+}
+function renderReport(){document.getElementById("reportBox").textContent=makeReport(reportMode)}
+function makeReport(mode=reportMode){
+  if(!chart)return "尚未產生報告。"; const m=chart.meta; let out=[]; out.push(`九宮奇門鎖單宮報告`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
+  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮簡明報告`,`時間：${m.solar}`,`用途：${chart.settings.qtype}`,`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`,s.denied?`判斷：直接否定`:`分數：${s.score}/100｜${s.grade.name}`,`總斷：${summary.total}`,`行動建議：${summary.action}`,`風水改善：${summary.fengshui}`].join("\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`總斷：${summary.total}`); out.push(`行動建議：${summary.action}`); out.push(`風水改善：${summary.fengshui}`); out.push(""); out.push(s.denied?`否定依據：`:`加分依據：`); s.reasons.forEach(r=>out.push(`- ${r.label} ${r.value>0?"+":""}${r.value}：${r.text}`));}
+  else out.push("\n尚未選 1-9 鎖單宮。");
+  return out.join("\n")
+}
+
+// ===== 匯入、匯出與案例庫 =====
+function download(name,text,type="text/plain;charset=utf-8"){const blob=new Blob([text],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    try{await navigator.clipboard.writeText(text); return true}catch(e){}
+  }
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.left="-9999px"; ta.style.top="0"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    if(ta.setSelectionRange)ta.setSelectionRange(0,ta.value.length);
+    return document.execCommand("copy");
+  }catch(e){return false}
+  finally{document.querySelectorAll("textarea[readonly][style*='-9999px']").forEach(el=>el.remove())}
+}
+function toast(msg){setNote(msg)}
+function chartPayload(){return {version:RULE_VERSION.app, ruleVersion:RULE_VERSION, exportedAt:new Date().toISOString(), chart, selectedNum}}
+function restoreChartPayload(payload){
+  if(!payload||!payload.chart||!Array.isArray(payload.chart.palaces))throw new Error("JSON 不是可匯入的盤面。");
+  chart=payload.chart; selectedNum=payload.selectedNum?Number(payload.selectedNum):null;
+  if(chart.settings){
+    if(chart.settings.qtype)document.getElementById("qtype").value=chart.settings.qtype;
+    if(chart.settings.doorMode)document.getElementById("doorMode").value=chart.settings.doorMode;
+    if(typeof chart.settings.ziChange==="boolean")document.getElementById("ziChange").value=String(chart.settings.ziChange);
+  }
+  if(chart.meta&&chart.meta.solar){
+    const m=chart.meta.solar.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})/);
+    if(m)setDateInput({y:+m[1],m:+m[2],d:+m[3],hh:+m[4],mm:+m[5]});
+  }
+  renderAll(); toast("已匯入盤面。");
+}
+function loadCases(){
+  try{const raw=localStorage.getItem(CASE_STORAGE_KEY); return raw?JSON.parse(raw):[]}catch(e){return []}
+}
+function saveCases(cases){localStorage.setItem(CASE_STORAGE_KEY,JSON.stringify(cases))}
+function currentCase(){
+  if(!chart||!selectedNum)throw new Error("請先起盤並選數字。");
+  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s);
+  return {
+    id:`case-${Date.now()}`,
+    savedAt:new Date().toISOString(),
+    title:document.getElementById("caseTitle").value.trim()||`${chart.settings.qtype}｜${chart.meta.solar}`,
+    outcome:document.getElementById("caseOutcome").value.trim(),
+    qtype:chart.settings.qtype,
+    selectedNum,
+    lockedPalace:p?`${p.key}${p.number}`:"",
+    result:s.denied?"直接否定":`${s.score}/100 ${s.grade.name}`,
+    summary:summary.total,
+    payload:chartPayload()
+  };
+}
+function saveCurrentCase(){
+  try{
+    const cases=loadCases(); cases.unshift(currentCase()); saveCases(cases.slice(0,100));
+    document.getElementById("caseTitle").value=""; document.getElementById("caseOutcome").value="";
+    renderCases(); toast("案例已儲存。");
+  }catch(err){toast(err.message||"案例儲存失敗。")}
+}
+function renderCases(){
+  const box=document.getElementById("caseList"); if(!box)return;
+  const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
+  const cases=loadCases().filter(c=>!query||[c.title,c.outcome,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query));
+  if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
+  box.innerHTML=cases.map(c=>`<div class="case-card" data-case-id="${escapeHTML(c.id)}">
+    <div>
+      <h3>${escapeHTML(c.title)}</h3>
+      <small>${escapeHTML(c.qtype)}｜${escapeHTML(c.lockedPalace)}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
+      <div class="case-tags"><span class="tab">${escapeHTML(c.selectedNum)}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span></div>
+    </div>
+    <div class="case-actions">
+      <button class="case-mini" type="button" data-action="load">回看</button>
+      <button class="case-mini danger" type="button" data-action="delete">刪除</button>
+    </div>
+  </div>`).join("");
+}
+function handleCaseClick(event){
+  const btn=event.target.closest("button[data-action]"); if(!btn)return;
+  const card=btn.closest("[data-case-id]"); const id=card?.dataset.caseId; const cases=loadCases(); const item=cases.find(c=>c.id===id); if(!item)return;
+  if(btn.dataset.action==="load"){restoreChartPayload(item.payload); toast("已載入案例。"); return}
+  if(btn.dataset.action==="delete"){saveCases(cases.filter(c=>c.id!==id)); renderCases(); toast("案例已刪除。");}
+}
+async function importJsonFile(file){
+  if(!file)return;
+  try{
+    const payload=JSON.parse(await file.text());
+    if(Array.isArray(payload.cases)){saveCases(payload.cases); renderCases(); toast("已匯入案例庫。"); return}
+    restoreChartPayload(payload);
+  }catch(err){toast(err.message||"JSON 匯入失敗。")}
+}
+function registerServiceWorker(){
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+}
+
+// ===== 初始化 =====
+function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`}
+function init(){
+  const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
+  renderAll();
+  document.getElementById("quickExample").onclick=()=>{setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; buildChart(); selectedNum=7; renderAll();};
+  document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
+  document.getElementById("buildBtn").onclick=buildChart;
+  document.getElementById("printBtn").onclick=()=>window.print();
+  document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").textContent=text; toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
+  document.getElementById("downloadTxt").onclick=()=>download("九宮奇門鎖單宮報告.txt",makeReport());
+  document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify(chartPayload(),null,2),"application/json;charset=utf-8");
+  document.getElementById("importJsonBtn").onclick=()=>document.getElementById("importJsonInput").click();
+  document.getElementById("importJsonInput").onchange=e=>{importJsonFile(e.target.files[0]); e.target.value=""};
+  document.getElementById("saveCase").onclick=saveCurrentCase;
+  document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
+  document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
+  document.getElementById("caseSearch").addEventListener("input",renderCases);
+  document.getElementById("caseList").addEventListener("click",handleCaseClick);
+  document.querySelectorAll(".report-mode").forEach(btn=>btn.addEventListener("click",()=>{
+    reportMode=btn.dataset.reportMode||"simple";
+    document.querySelectorAll(".report-mode").forEach(b=>b.classList.toggle("active",b===btn));
+    renderReport();
+  }));
+  document.getElementById("qtype").addEventListener("change",()=>{if(chart){chart.settings.qtype=document.getElementById("qtype").value; renderAll();}});
+  ["doorMode","ziChange"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{if(chart)buildChart()}));
+  registerServiceWorker();
+}
+init();

@@ -1,0 +1,11 @@
+{
+  "name": "九宮奇門鎖單宮",
+  "short_name": "九宮奇門",
+  "description": "輸入時間、選 1-9 一個數字，查看九宮盤與鎖單宮結果。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f2ed",
+  "theme_color": "#a94321",
+  "lang": "zh-Hant"
+}
