@@ -46,6 +46,7 @@ assert(html.includes("caseCompareChosen"), "compare chosen feedback field is mis
 assert(html.includes("caseCompareHit"), "compare hit feedback field is missing");
 assert(html.includes("caseCompareNote"), "compare note feedback field is missing");
 assert(html.includes("caseReviewFilter"), "case review quality filter is missing");
+assert(html.includes("priority"), "priority review filter is missing");
 assert(html.includes("low-accuracy"), "low-accuracy review filter is missing");
 assert(html.includes("compare-incomplete"), "compare incomplete review filter is missing");
 assert(html.includes("compare-chosen-mismatch"), "compare chosen mismatch review filter is missing");
@@ -56,7 +57,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-27"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-28"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -108,6 +109,8 @@ assert(app.includes("caseTrainingTask"), "case training task helper is missing")
 assert(app.includes("caseTrainingTaskHTML"), "case training task renderer is missing");
 assert(app.includes("caseCompletion"), "case completion helper is missing");
 assert(app.includes("caseMatchesReviewFilter"), "case review filter helper is missing");
+assert(app.includes("caseReviewPriority"), "case review priority helper is missing");
+assert(app.includes("sortCasesForReview"), "case review priority sort helper is missing");
 assert(app.includes("buildCaseReviewChecklist"), "case review checklist builder is missing");
 assert(app.includes("copyActiveCaseReviewChecklist"), "case review checklist copy handler is missing");
 assert(app.includes("buildFilteredCaseReviewChecklist"), "filtered case review checklist builder is missing");

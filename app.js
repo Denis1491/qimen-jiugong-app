@@ -688,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-27").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-28").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1686,7 +1686,7 @@ async function copyActiveCaseReviewChecklist(){
   toast(ok?"回驗清單已複製。":"瀏覽器限制複製，請改用匯出案例。");
 }
 function caseReviewFilterLabel(value){
-  return {all:"全部案例",unreviewed:"待回填結果",incomplete:"待補完整",complete:"已完整","low-accuracy":"低分案例","compare-incomplete":"比較題待補","compare-chosen-mismatch":"推薦未採用","compare-hit-mismatch":"推薦未應驗"}[value]||"全部案例";
+  return {all:"全部案例",priority:"優先回驗",unreviewed:"待回填結果",incomplete:"待補完整",complete:"已完整","low-accuracy":"低分案例","compare-incomplete":"比較題待補","compare-chosen-mismatch":"推薦未採用","compare-hit-mismatch":"推薦未應驗"}[value]||"全部案例";
 }
 function caseReviewSearchText(c){
   return [c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.compareChosen,c.feedback?.compareChosen,c.compareHit,c.feedback?.compareHit,c.compareNote,c.feedback?.compareNote,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase();
@@ -1694,22 +1694,24 @@ function caseReviewSearchText(c){
 function filteredReviewCases(allCases=loadCases()){
   const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
   const reviewFilter=document.getElementById("caseReviewFilter")?.value||"all";
-  return allCases
+  return sortCasesForReview(allCases
     .filter(c=>!query||caseReviewSearchText(c).includes(query))
-    .filter(c=>caseMatchesReviewFilter(c,reviewFilter));
+    .filter(c=>caseMatchesReviewFilter(c,reviewFilter)));
 }
 function caseReviewDigestLine(c,index){
   const completion=caseCompletion(c);
   const fb=c?.feedback||{};
   const accuracy=caseAccuracyValue(c);
+  const priority=caseReviewPriority(c);
   const missing=completion.missing.length?completion.missing.join("、"):"已完整";
   const compareText=isCompareCase(c)?`｜採用 ${compareOptionLabel(fb.compareChosen||c?.compareChosen)}｜應驗 ${compareOptionLabel(fb.compareHit||c?.compareHit)}`:"";
   return [
-    `${index+1}. ${c?.title||"未命名案例"}`,
+    `${index+1}. ${priority.label}｜${c?.title||"未命名案例"}`,
     `   題型：${c?.qtype||"待確認"}｜鎖定：${c?.lockedPalace||"待確認"}｜結果：${c?.result||"未記錄"}`,
     `   問事：${c?.question||"未記錄"}`,
     `   原判斷：${c?.summary||"未記錄"}`,
     `   回驗：完整度 ${completion.done}/${completion.total}｜準確度 ${accuracy===null?"未回填":`${accuracy} 星`}｜應事 ${fb.hitArea||"未分類"}${compareText}`,
+    `   優先原因：${priority.reason}`,
     `   待補：${missing}`,
     `   校準：${calibrationLabel(fb.calibration||c?.calibration)}｜備註：${fb.notes||fb.compareNote||c?.compareNote||""}`
   ].join("\n");
@@ -1818,6 +1820,24 @@ function compareHitMismatch(c){
   const value=compareHitFromCase(c);
   if(!winner||!value||value==="unclear")return false;
   return value==="none"||value==="mixed"||(isSpecificCompareOption(value)&&value!==winner);
+}
+function caseReviewPriority(c){
+  const completion=caseCompletion(c);
+  const accuracy=caseAccuracyValue(c);
+  if(completion.done===0)return {rank:1,label:"P1 待回填",reason:"尚未回填實際結果，無法進入校準。"};
+  if(accuracy!==null&&accuracy<=2)return {rank:1,label:"P1 低分待查",reason:"準確度 2 星以下，優先確認問法、鎖宮與文案是否需要修正。"};
+  if(compareHitMismatch(c))return {rank:1,label:"P1 推薦未應驗",reason:"比較題實際應驗沒有對上推薦，需要回看條件變動或判斷依據。"};
+  if(compareChosenMismatch(c))return {rank:2,label:"P2 推薦未採用",reason:"使用者未採用推薦，可回看成本、偏好或建議是否可執行。"};
+  if(completion.done>0&&completion.done<completion.total)return {rank:2,label:"P2 待補完整",reason:"已有回驗但欄位未齊，補完整後才適合做校準。"};
+  if(completion.done===completion.total)return {rank:4,label:"P4 已完整",reason:"資料完整，可作為後續校準樣本。"};
+  return {rank:3,label:"P3 可觀察",reason:"已有部分資料，暫不屬於最高優先回看。"};
+}
+function caseReviewTime(c){
+  const time=Date.parse(c?.updatedAt||c?.savedAt||"");
+  return Number.isFinite(time)?time:0;
+}
+function sortCasesForReview(cases){
+  return [...cases].sort((a,b)=>(caseReviewPriority(a).rank-caseReviewPriority(b).rank)||(caseReviewTime(b)-caseReviewTime(a)));
 }
 function calibrationLabel(value){
   return {accurate:"判斷準",delayed:"只是延遲","wrong-area":"應事不同","too-strong":"說得太死",downgrade:"需改成風險降級",unclear:"仍待觀察"}[value]||"未回填";
@@ -1960,6 +1980,7 @@ function caseMatchesReviewFilter(c,filter){
   if(!filter||filter==="all")return true;
   const completion=caseCompletion(c);
   if(filter==="unreviewed")return completion.done===0;
+  if(filter==="priority")return caseReviewPriority(c).rank<=2;
   if(filter==="incomplete")return completion.done>0&&completion.done<completion.total;
   if(filter==="complete")return completion.done===completion.total;
   if(filter==="low-accuracy")return (caseAccuracyValue(c)??99)<=2;
@@ -2118,13 +2139,15 @@ function renderCases(){
     const compareTags=c.decisionOptions||c.compare?`<span class="tab">採用：${escapeHTML(compareOptionLabel(fb.compareChosen||c.compareChosen))}</span><span class="tab">應驗：${escapeHTML(compareOptionLabel(fb.compareHit||c.compareHit))}</span>`:"";
     const numLabel=c.decisionOptions?c.decisionOptions.map(opt=>`${opt.side}${opt.num}`).join("/"):c.compare?.A&&c.compare?.B?`A${c.compare.A.num}/B${c.compare.B.num}`:c.selectedNum;
     const completion=caseCompletion(c);
+    const priority=caseReviewPriority(c);
     const missingText=completion.missing.length?`待補：${completion.missing.slice(0,4).join("、")}${completion.missing.length>4?"等":""}`:"回驗資料完整";
     return `<div class="case-card" data-case-id="${escapeHTML(c.id)}">
     <div>
       <h3>${escapeHTML(c.title)}</h3>
       <small>${escapeHTML(c.qtype)}｜鎖定 ${escapeHTML(c.lockedPalace)}｜本人 ${escapeHTML(c.selfPalace||"待確認")}｜事情 ${escapeHTML(c.matterPalace||"待確認")}｜${escapeHTML(c.result)}｜${new Date(c.savedAt).toLocaleString("zh-TW")}</small>
       ${c.question?`<small>問事：${escapeHTML(c.question)}</small>`:""}
-      <div class="case-tags"><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span>${compareTags}<span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span><span class="tab">${escapeHTML(calibrationLabel(c.calibration||c.feedback?.calibration))}</span></div>
+      <div class="case-tags"><span class="tab">${escapeHTML(priority.label)}</span><span class="tab">${escapeHTML(numLabel)}</span><span class="tab">${escapeHTML(c.problemDiagnosis?.decisionIntent||"未診斷")}</span><span class="tab">${escapeHTML(c.outcome||"未填結果")}</span><span class="tab">${escapeHTML(accuracy)}</span><span class="tab">${escapeHTML(hit)}</span>${compareTags}<span class="tab">${escapeHTML(c.afterAction||c.feedback?.afterAction||"未填行動")}</span><span class="tab">${escapeHTML(c.verifiedSymbol||c.feedback?.verifiedSymbol||"未填應驗象")}</span><span class="tab">${escapeHTML(riskReducedLabel(c.riskReduced||c.feedback?.riskReduced))}</span><span class="tab">${escapeHTML(calibrationLabel(c.calibration||c.feedback?.calibration))}</span></div>
+      <small>優先原因：${escapeHTML(priority.reason)}</small>
       <div class="case-completion"><strong>回驗完整度 ${completion.done}/${completion.total}</strong><span>${escapeHTML(missingText)}</span></div>
       ${c.compareNote||c.feedback?.compareNote?`<small>比較回驗：${escapeHTML(c.compareNote||c.feedback?.compareNote)}</small>`:""}
       ${c.deviationResult||c.feedback?.deviationResult?`<small>偏離建議後：${escapeHTML(c.deviationResult||c.feedback?.deviationResult)}</small>`:""}
@@ -2300,8 +2323,17 @@ function testCaseReviewFilter(){
   const comparePartial={decisionOptions:[{side:"A"},{side:"B"}],outcome:"有結果",feedback:{accuracy:"4",compareChosen:"A"}};
   const compareChosenMiss={compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{compareChosen:"A"}};
   const compareHitMiss={compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{compareHit:"mixed"}};
-  const ok=caseMatchesReviewFilter(blank,"unreviewed")&&caseMatchesReviewFilter(partial,"incomplete")&&caseMatchesReviewFilter(complete,"complete")&&!caseMatchesReviewFilter(partial,"complete")&&caseMatchesReviewFilter(low,"low-accuracy")&&caseMatchesReviewFilter(comparePartial,"compare-incomplete")&&caseMatchesReviewFilter(compareChosenMiss,"compare-chosen-mismatch")&&caseMatchesReviewFilter(compareHitMiss,"compare-hit-mismatch")&&!caseMatchesReviewFilter({feedback:{accuracy:"3"}},"low-accuracy");
+  const ok=caseMatchesReviewFilter(blank,"unreviewed")&&caseMatchesReviewFilter(partial,"incomplete")&&caseMatchesReviewFilter(complete,"complete")&&!caseMatchesReviewFilter(partial,"complete")&&caseMatchesReviewFilter(low,"low-accuracy")&&caseMatchesReviewFilter(comparePartial,"compare-incomplete")&&caseMatchesReviewFilter(compareChosenMiss,"compare-chosen-mismatch")&&caseMatchesReviewFilter(compareHitMiss,"compare-hit-mismatch")&&caseMatchesReviewFilter(compareHitMiss,"priority")&&!caseMatchesReviewFilter(complete,"priority")&&!caseMatchesReviewFilter({feedback:{accuracy:"3"}},"low-accuracy");
   console.assert(ok,"V5: review filters should separate unreviewed, incomplete, low-score and compare mismatch cases.");
+  return ok;
+}
+function testCaseReviewPriority(){
+  const complete={savedAt:"2026-07-07T00:00:00Z",outcome:"有結果",afterAction:"有照做",verifiedSymbol:"驚門",riskReduced:"yes",deviationResult:"無",calibration:"accurate",feedback:{accuracy:"4",hitArea:"口舌"}};
+  const low={savedAt:"2026-07-08T00:00:00Z",outcome:"失準",feedback:{accuracy:"2",hitArea:"合作"}};
+  const chosenMiss={savedAt:"2026-07-06T00:00:00Z",compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{compareChosen:"A"}};
+  const sorted=sortCasesForReview([complete,chosenMiss,low]);
+  const ok=caseReviewPriority(low).label==="P1 低分待查"&&caseReviewPriority(chosenMiss).label==="P2 推薦未採用"&&caseReviewPriority(complete).label==="P4 已完整"&&sorted[0]===low&&sorted[2]===complete;
+  console.assert(ok,"V5: case review priority should rank urgent calibration cases first.");
   return ok;
 }
 function testCaseReviewChecklist(){
@@ -2314,7 +2346,7 @@ function testFilteredCaseReviewChecklist(){
   const text=buildFilteredCaseReviewChecklist([
     {title:"比較案例",qtype:"合作",question:"選 A 或 B",lockedPalace:"A坎1｜B離9",result:"推薦 B",summary:"B 較穩",decisionOptions:[{side:"A"},{side:"B"}],compare:{winner:"B"},feedback:{accuracy:"2",hitArea:"合作",compareChosen:"A",compareHit:"mixed"}}
   ],{filter:"compare-hit-mismatch",query:"合作"});
-  const ok=text.includes("批次回驗清單")&&text.includes("篩選：推薦未應驗")&&text.includes("案例數：1")&&text.includes("採用 選項 A")&&text.includes("應驗 混合應驗")&&text.includes("待補：");
+  const ok=text.includes("批次回驗清單")&&text.includes("篩選：推薦未應驗")&&text.includes("案例數：1")&&text.includes("P1 低分待查")&&text.includes("採用 選項 A")&&text.includes("應驗 混合應驗")&&text.includes("優先原因：")&&text.includes("待補：");
   console.assert(ok,"V5: filtered review checklist should summarize the visible calibration queue.");
   return ok;
 }
@@ -2392,6 +2424,7 @@ function runV5DevTests(){
   testCompareCaseCompletionFields();
   testCompareRecommendationMatchStats();
   testCaseReviewFilter();
+  testCaseReviewPriority();
   testCaseReviewChecklist();
   testFilteredCaseReviewChecklist();
   testCaseReviewCsv();
