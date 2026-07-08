@@ -162,18 +162,36 @@ function diagnoseQuestion(text){
   const decisionIntent=keywordHit(normalized,["要不要","是否","可不可以","該不該"]) ? "是/否決策" : keywordHit(normalized,["選","A","B","方案"]) ? "選項比較" : "狀態判斷";
   return {suggestedQtype,confidence:top.score>=2?"中高":top.score===1?"中":"低",decisionIntent,riskTypes,followUps:unique(followUps).slice(0,4),reason:top.score>0?`命中關鍵詞：${top.rule.words.filter(w=>normalized.includes(w)).join("、")}`:"問題較泛，暫以今日運勢承接。"};
 }
+function buildQuestionRewrite(text,diagnosis=diagnoseQuestion(text)){
+  const raw=String(text||"").trim();
+  if(!raw)return "今天我想判斷一件具體事情：我是否要採取一個可回驗的小行動？";
+  if(/最小可行行動|收斂成一件可行動的事|下一個最小行動|哪個風險最低/.test(raw))return raw;
+  const hasTime=keywordHit(raw,["今天","明天","這週","本週","現在","月底","下週"]);
+  const time=hasTime?"":"在今天到這週內，";
+  if(diagnosis.decisionIntent==="選項比較")return `${time}我想比較幾個選項：A、B、C 哪個風險最低、成本最小、最可回驗？原問題：${raw}`;
+  if(diagnosis.decisionIntent==="是/否決策")return `${time}${raw}如果要做，最小可行行動是什麼？如果不做，主要風險是什麼？`;
+  if(diagnosis.suggestedQtype==="今日運勢")return `${time}我想把「${raw}」收斂成一件可行動的事：今天最該先做哪一步、先避開哪個風險？`;
+  return `${time}針對「${raw}」，我想知道目前風險在哪裡、可用點在哪裡，以及下一個最小行動是什麼？`;
+}
 function renderQuestionDiagnosis(){
   const box=document.getElementById("questionDiagnosis"); if(!box)return;
   const d=diagnoseQuestion(questionText());
+  const rewrite=buildQuestionRewrite(questionText(),d);
   box.innerHTML=`<div><strong>問題診斷</strong><span>建議用途：${escapeHTML(d.suggestedQtype)}｜信心：${escapeHTML(d.confidence)}｜問題型態：${escapeHTML(d.decisionIntent)}</span></div>
   <div class="diagnosis-tags">${[d.reason].concat(d.riskTypes.map(x=>`風險：${x}`)).map(x=>`<span class="tab">${escapeHTML(x)}</span>`).join("")}</div>
-  <div><span>建議追問：${escapeHTML(d.followUps.join("；")||"問題已足夠明確，可以排盤。")}</span></div>`;
+  <div><span>建議追問：${escapeHTML(d.followUps.join("；")||"問題已足夠明確，可以排盤。")}</span></div>
+  <div><strong>建議問法</strong><span>${escapeHTML(rewrite)}</span></div>`;
 }
 function applyDiagnosisQtype(){
   const q=document.getElementById("qtype"); if(!q||inquiryLocked)return;
   q.value=diagnoseQuestion(questionText()).suggestedQtype;
   renderQuestionDiagnosis();
   if(chart&&!inquiryLocked){chart.settings.qtype=q.value; chart.problemDiagnosis=diagnoseQuestion(questionText()); renderAll();}
+}
+function applyQuestionRewrite(){
+  const input=document.getElementById("questionText"); if(!input||inquiryLocked)return;
+  input.value=buildQuestionRewrite(questionText());
+  renderQuestionDiagnosis();
 }
 function inquiryMode(){return document.getElementById("inquiryMode")?.value||"formal"}
 function isFormalInquiry(){return inquiryMode()==="formal"}
@@ -641,7 +659,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-18").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-19").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1852,6 +1870,7 @@ function init(){
   document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
   document.getElementById("questionText").addEventListener("input",()=>{renderQuestionDiagnosis();});
   document.getElementById("applyDiagnosisQtype").onclick=applyDiagnosisQtype;
+  document.getElementById("applyQuestionRewrite").onclick=applyQuestionRewrite;
   document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
   document.getElementById("resetInquiryAsk").onclick=resetInquiry;
   document.getElementById("resetInquiryChart").onclick=resetInquiry;
@@ -1995,6 +2014,14 @@ function testCaseCalibrationSummary(){
   console.assert(ok,"V5: calibration summary should include progress, symbol hit and action effect.");
   return ok;
 }
+function testQuestionRewrite(){
+  const yesNo=buildQuestionRewrite("我要不要找他？",diagnoseQuestion("我要不要找他？"));
+  const broad=buildQuestionRewrite("今天運勢如何",diagnoseQuestion("今天運勢如何"));
+  const twice=buildQuestionRewrite(broad,diagnoseQuestion(broad));
+  const ok=yesNo.includes("最小可行行動")&&broad.includes("收斂成一件可行動的事")&&twice===broad;
+  console.assert(ok,"V5: question rewrite should turn broad questions into actionable questions.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -2012,5 +2039,6 @@ function runV5DevTests(){
   testCaseReviewCsv();
   testCaseTrainingTask();
   testCaseCalibrationSummary();
+  testQuestionRewrite();
 }
 init();
