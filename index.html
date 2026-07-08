@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>九宮奇門鎖單宮｜全自動排盤系統 V3</title>
+  <meta name="description" content="九宮奇門鎖單宮全自動排盤：輸入時間、選 1-9 一數，自動產生陰盤九宮、紅吉綠凶、宮位分數與行動建議。">
+  <style>
+    :root{
+      --bg:#f7f0e6; --paper:#fffaf2; --paper2:#fff4e4; --ink:#29241d; --muted:#776b5d;
+      --line:#dfcdb7; --brand:#a94321; --brand2:#d26130; --gold:#b98222; --teal:#0c7a73;
+      --good:#c33122; --bad:#12885f; --neutral:#26221d; --soft-good:#fff0ec; --soft-bad:#eef9f3;
+      --shadow:0 18px 48px rgba(72,45,20,.12); --radius:20px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif;color:var(--ink);background:
+      radial-gradient(circle at 8% 0%,rgba(211,97,48,.18),transparent 34rem),
+      radial-gradient(circle at 95% 15%,rgba(12,122,115,.12),transparent 28rem),
+      linear-gradient(180deg,#fffaf4 0%,var(--bg) 54%,#f1e7d9 100%);line-height:1.55}
+    button,input,select,textarea{font:inherit}
+    .shell{width:min(1380px,calc(100vw - 28px));margin:0 auto;padding:26px 0 60px}
+    .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-bottom:18px}
+    .card{background:rgba(255,250,242,.95);border:1px solid rgba(223,205,183,.9);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .hero-main{padding:28px;position:relative;overflow:hidden;min-height:238px}
+    .hero-main:after{content:"九宮鎖單";position:absolute;right:20px;bottom:-46px;font-size:8rem;font-weight:950;letter-spacing:0;color:rgba(169,67,33,.055);pointer-events:none}
+    .eyebrow{display:inline-flex;gap:8px;align-items:center;border:1px solid rgba(169,67,33,.25);background:#fff6eb;border-radius:999px;padding:6px 12px;color:#8c3218;font-weight:750;font-size:.92rem}
+    h1{font-size:3.4rem;line-height:1.02;margin:16px 0 12px;letter-spacing:0}
+    .hero p{font-size:1.05rem;color:var(--muted);max-width:820px;margin:0 0 16px}
+    .hero-side{padding:20px;display:grid;gap:12px}
+    .metric{border:1px solid rgba(223,205,183,.9);background:linear-gradient(180deg,#fff,#fff8ec);border-radius:16px;padding:14px}
+    .metric .label{font-size:.82rem;color:var(--muted);font-weight:700}.metric .value{font-size:1.35rem;font-weight:900;margin-top:3px;color:#5d2d14}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .panel{padding:20px;margin-bottom:18px}.section-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+    .section-title h2{font-size:1.35rem;margin:0}.section-title small{color:var(--muted)}
+    .form-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end}
+    .field label{display:block;font-size:.86rem;font-weight:800;margin-bottom:6px;color:#5d5042}.field input,.field select,.field textarea{width:100%;border:1px solid #d7c7b3;border-radius:13px;background:#fff;padding:12px;color:var(--ink);outline:none}.field textarea{min-height:100px;resize:vertical}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand2);box-shadow:0 0 0 4px rgba(210,97,48,.12)}
+    .btn-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.btn{border:0;border-radius:14px;padding:12px 16px;font-weight:900;cursor:pointer;transition:.15s transform,.15s filter}.btn:hover{transform:translateY(-1px);filter:brightness(1.02)}.btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}.btn-teal{background:linear-gradient(135deg,#087169,#10a098);color:#fff}.btn-soft{background:#fff1e2;color:#7b351b;border:1px solid #e7cbb6}.btn-ghost{background:#fff;border:1px solid #d8c7b4;color:#4d4135}.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .note{font-size:.92rem;color:var(--muted);margin-top:10px}.warn{background:#fff8dd;border:1px solid #e9d486;color:#71500f;border-radius:14px;padding:10px 12px;font-size:.92rem}
+    .num-pad{display:grid;grid-template-columns:repeat(9,1fr);gap:8px}.num-btn{min-height:58px;border-radius:16px;border:1px solid #dbc8b2;background:#fff;font-size:1.5rem;font-weight:950;cursor:pointer;color:#3a3027}.num-btn.active{background:linear-gradient(135deg,#a94321,#d26130);color:#fff;border-color:#a94321;box-shadow:0 12px 26px rgba(169,67,33,.25)}.num-btn.good{outline:3px solid rgba(195,49,34,.18)}.num-btn.bad{outline:3px solid rgba(18,136,95,.18)}
+    .app-main{display:grid;grid-template-columns:minmax(620px,1.1fr) minmax(360px,.9fr);gap:18px;align-items:start}.chart-card{padding:18px}.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.meta{background:#fff8ef;border:1px solid #e8d6bf;border-radius:14px;padding:10px}.meta span{display:block;font-size:.75rem;color:var(--muted);font-weight:800}.meta strong{display:block;margin-top:2px;font-size:1rem;color:#50301d}
+    .locked-palace-panel{margin-top:14px;border:1px solid #dfcdb7;background:linear-gradient(180deg,#fffdf8,#fff5e7);border-radius:16px;padding:14px}.locked-empty{color:var(--muted);font-weight:850}.locked-card{display:grid;gap:12px}.locked-card.lock-good{--lock:#c33122;--lock-bg:#fff0ec;--lock-border:#efc1b8}.locked-card.lock-bad{--lock:#12885f;--lock-bg:#eef9f3;--lock-border:#b8dfcd}.locked-card.lock-denied{--lock:#12885f;--lock-bg:#edf8f2;--lock-border:#b8dfcd}.locked-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.locked-title{display:flex;gap:10px;align-items:center}.locked-num{min-width:48px;height:48px;border-radius:12px;background:var(--lock-bg);border:1px solid var(--lock-border);color:var(--lock);display:grid;place-items:center;font-size:1.45rem;font-weight:950}.locked-title h3{margin:0;font-size:1.35rem}.locked-title small{display:block;color:var(--muted);font-weight:850}.locked-status{align-self:center;color:var(--lock);background:var(--lock-bg);border:1px solid var(--lock-border);border-radius:999px;padding:8px 12px;font-weight:950;white-space:nowrap}.locked-symbols{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.symbol-box{background:#fff;border:1px solid #ead9c2;border-radius:12px;padding:9px;min-width:0}.symbol-box span{display:block;color:var(--muted);font-size:.74rem;font-weight:850}.symbol-box strong{display:block;margin-top:2px;font-size:1.08rem;line-height:1.3}.locked-summary{background:#fff;border-left:4px solid var(--lock);border-radius:12px;padding:10px 12px;color:#3c342b}.locked-summary strong{display:block;margin-bottom:3px}
+    .palace-frame{position:relative;padding:24px;border-radius:14px;background:#fffdf8;border:1px solid #e4d1bb;overflow:hidden}.palace-frame:after{content:"九宮";position:absolute;inset:auto 4% -16px auto;font-size:6rem;font-weight:950;color:rgba(169,67,33,.045);pointer-events:none}.palace-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:2px solid #29241d;background:#29241d;position:relative;z-index:1}.palace{min-height:188px;background:rgba(255,255,252,.98);padding:12px;display:grid;grid-template-rows:auto 1fr auto;gap:8px;border:1px solid #29241d;position:relative;transition:.15s;font:inherit;text-align:left;color:inherit}.palace:not(.center){cursor:pointer}.palace:hover{background:#fffaf0}.palace.selected{z-index:2;box-shadow:inset 0 0 0 4px rgba(185,130,34,.7),0 0 0 4px rgba(185,130,34,.16);background:#fff7d8}.palace.good-bg{background:linear-gradient(180deg,#fffdf9,#fff4ef)}.palace.bad-bg{background:linear-gradient(180deg,#fff,#f1faf5)}.palace.center{background:#faf1e4;color:#8a7a6b;display:flex;justify-content:center;align-items:center;text-align:center}.palace-top,.palace-mid,.palace-bottom{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.palace-top{font-weight:950}.palace-id{font-size:1.24rem}.palace-id small{font-size:.88rem;color:var(--muted);margin-left:1px}.palace-score{font-size:.78rem;border-radius:999px;padding:3px 7px;background:#fff;border:1px solid #e2d0b9;color:#6a5642;font-weight:950}.palace.selected .palace-score{background:#fff6cd;color:#86570a;border-color:#d8b75b}.god{font-weight:950;font-size:1.08rem}.line{display:flex;justify-content:space-between;gap:10px;align-items:center}.sym{font-weight:950;font-size:1.18rem;white-space:nowrap}.palace-mid .sym{font-size:1.28rem}.stems{font-weight:950;font-size:1.12rem;text-align:right;line-height:1.35}.small-tag{display:inline-block;border-radius:999px;padding:1px 4px;font-size:.66rem;font-weight:900;margin-left:2px;border:1px solid #ddd}.flagrow{min-height:22px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.flag{font-size:.75rem;border-radius:999px;padding:2px 7px;font-weight:900;border:1px solid #e4d3be;background:#fff;color:#71543a}.flag.bad{background:#eef9f3;color:#0f7551;border-color:#b8dfcd}.flag.warn{background:#fff8dd;color:#866312;border-color:#e8d79a}.flag.good{background:#fff0ec;color:#ac2b1f;border-color:#e8b7ac}.good-text{color:var(--good)}.bad-text{color:var(--bad)}.neutral-text{color:var(--neutral)}.muted-text{color:var(--muted)}
+    .score-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-weight:950}.score-good{background:#fff0ec;color:var(--good);border:1px solid #efc1b8}.score-mid{background:#fff8dd;color:#7a5a13;border:1px solid #ead28c}.score-bad{background:#eef9f3;color:var(--bad);border:1px solid #b8dfcd}
+    .result-card{padding:20px;position:sticky;top:14px}.big-score{display:flex;align-items:baseline;gap:8px;margin:8px 0 10px}.big-score .num{font-size:4.2rem;line-height:1;font-weight:950;letter-spacing:0}.big-score .suffix{font-weight:900;color:var(--muted)}.grade{font-size:1.35rem;font-weight:950}.bar{height:12px;background:#eadbc8;border-radius:999px;overflow:hidden;margin:10px 0 14px}.bar span{display:block;height:100%;background:linear-gradient(90deg,#12885f,#b98222,#c33122);border-radius:999px;width:50%}.list{display:grid;gap:8px}.item{background:#fff8ef;border:1px solid #e8d6bf;border-radius:14px;padding:10px 12px}.item strong{display:block;margin-bottom:3px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.tab{border:1px solid #d9c6b0;background:#fff;border-radius:999px;padding:6px 10px;font-size:.85rem;font-weight:900;color:#5b4e42}.tab.active{background:#fff0ec;color:#ab321e;border-color:#e8b7ac}
+    .report{white-space:pre-wrap;min-height:180px;background:#fff;border:1px solid #d7c7b3;border-radius:14px;padding:14px;color:#302820}.footer-note{font-size:.85rem;color:var(--muted)}
+    @media(max-width:1050px){.hero,.app-main{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.result-card{position:static}.meta-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:680px){.shell{width:min(100vw - 18px,680px);padding-top:14px}.hero-main,.panel,.result-card,.chart-card{padding:14px;border-radius:16px}h1{font-size:2.25rem}.hero-main:after{font-size:5rem}.form-grid,.grid2,.grid3{grid-template-columns:1fr}.num-pad{grid-template-columns:repeat(3,1fr)}.locked-head{display:grid}.locked-status{justify-self:start}.locked-symbols{grid-template-columns:repeat(2,1fr)}.palace-frame{padding:8px}.palace-frame:after{font-size:4rem}.palace{min-height:142px;padding:7px;gap:5px}.palace-id{font-size:1rem}.palace-score{font-size:.66rem;padding:2px 5px}.god{font-size:.9rem}.sym{font-size:.92rem}.palace-mid .sym{font-size:1rem}.stems{font-size:.9rem}.small-tag{font-size:.58rem;padding:0 3px}.flag{font-size:.65rem;padding:1px 5px}.meta-grid{grid-template-columns:1fr}.big-score .num{font-size:3.3rem}}
+    @media print{body{background:#fff}.btn-row,.controls,.num-pad,.warn,.footer-note{display:none!important}.shell{width:100%;padding:0}.card{box-shadow:none;border:1px solid #ccc}.result-card{position:static}.app-main,.hero{grid-template-columns:1fr}.palace{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="hero">
+    <div class="hero-main card">
+      <span class="eyebrow">九宮奇門・鎖單宮・紅吉綠凶・宮位分數</span>
+      <h1>全自動排盤系統</h1>
+      <p>輸入時間後自動換算四柱、農曆、陰盤局數、旬首、空亡、驛馬、九星、八門、八神、天地盤干。再選 1-9 一個數，鎖定單宮，產生運勢總分、行動建議與今日風水改善。</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="quickExample">載入範例盤 2026/07/08 07:44</button>
+        <button class="btn btn-soft" id="quickNow">使用現在時間</button>
+      </div>
+    </div>
+    <aside class="hero-side card">
+      <div class="metric"><div class="label">目前鎖定</div><div class="value" id="metricLock">未選數</div></div>
+      <div class="metric"><div class="label">鎖單宮分數</div><div class="value" id="metricScore">—</div></div>
+      <div class="metric"><div class="label">全盤平均</div><div class="value" id="metricOverall">—</div></div>
+    </aside>
+  </header>
+
+  <section class="panel card controls">
+    <div class="section-title">
+      <div><h2>一、輸入時間 → 自動排盤</h2><small>陰盤九宮起局：年支數＋農曆月＋農曆日＋時支數，除 9 取餘數，餘 0 作 9。</small></div>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label for="dt">起盤時間</label><input type="datetime-local" id="dt"></div>
+      <div class="field"><label for="qtype">用途</label><select id="qtype"><option>今日運勢</option><option>工作</option><option>財運</option><option>感情</option><option>合作</option><option>健康</option><option>風水</option><option>決策</option></select></div>
+      <div class="field"><label for="doorMode">八門排法</label><select id="doorMode"><option value="lock">九宮鎖單宮校準</option><option value="star">星門同轉</option><option value="classic">傳統值使門</option></select></div>
+      <div class="field"><label for="ziChange">晚子時</label><select id="ziChange"><option value="false">23:00 不換日</option><option value="true">23:00 換隔日</option></select></div>
+      <div class="btn-row"><button class="btn btn-primary" id="buildBtn">開始排盤</button><button class="btn btn-ghost" id="printBtn">列印/PDF</button></div>
+    </div>
+    <div class="note" id="autoNote">尚未排盤。</div>
+  </section>
+
+  <section class="panel card controls">
+<div class="section-title"><div><h2>二、選 1-9 一個數 → 鎖單宮</h2><small>1 坎、2 坤、3 震、4 巽、5 改取坤二宮、6 乾、7 兌、8 艮、9 離。選中的宮位會依分數變色。</small></div></div>
+    <div class="num-pad" id="numPad"></div>
+    <div class="locked-palace-panel" id="lockedPalacePanel">
+      <div class="locked-empty">開盤後選一個數字，這裡會直接顯示你鎖定的宮位。</div>
+    </div>
+  </section>
+
+  <main class="app-main">
+    <section class="chart-card card">
+      <div class="section-title"><div><h2>九宮盤面</h2><small>紅字＝吉象；綠字＝凶象；黑字＝中性或需看組合。</small></div><span class="score-pill score-mid" id="chartBadge">未排盤</span></div>
+      <div class="meta-grid" id="metaGrid"></div>
+      <div class="palace-frame"><div class="palace-grid" id="palaceGrid"></div></div>
+    </section>
+
+    <aside class="result-card card">
+      <div class="section-title"><div><h2>鎖單宮結果</h2><small id="resultSub">請先排盤並選數。</small></div></div>
+      <div class="big-score"><span class="num" id="scoreNum">—</span><span class="suffix">/100</span></div>
+      <div class="grade" id="gradeText">未鎖定</div>
+      <div class="bar"><span id="scoreBar"></span></div>
+      <div class="tabs" id="reasonTabs"></div>
+      <div class="list" id="resultList"></div>
+      <hr style="border:0;border-top:1px solid #e4d2bd;margin:16px 0">
+      <div class="btn-row">
+        <button class="btn btn-teal" id="copyReport">複製報告</button>
+        <button class="btn btn-soft" id="downloadTxt">下載文字</button>
+        <button class="btn btn-ghost" id="exportJson">匯出盤面 JSON</button>
+      </div>
+    </aside>
+  </main>
+
+  <section class="panel card" style="margin-top:18px">
+    <div class="section-title"><div><h2>完整報告</h2><small>會隨時間、用途與鎖定數字自動更新。</small></div></div>
+    <div class="report" id="reportBox">尚未產生報告。</div>
+  </section>
+
+  <section class="panel card">
+    <div class="section-title"><div><h2>規則說明</h2><small>這一版採「可調規則引擎」，方便後續替換成你自己的授課表或授權表。</small></div></div>
+    <div class="warn">注意：本系統以使用者提供資料與公開資料校準核心流程；細部斷訣、專屬符號表與完整起盤規則仍可後續替換。若你有正式規則表，可把權重表改成自己的版本。</div>
+    <p class="footer-note">支援西元 1900-2050 農曆換算；四柱以常用干支算法與固定節令近似月柱，陰盤局數以農曆年月日時數起局。不同門派對晚子時、八門排法、入墓擊刑會有差異，已提供排法選項。</p>
+  </section>
+</div>
+<script>
+// ===== 基本常數 =====
+const STEMS = "甲乙丙丁戊己庚辛壬癸".split("");
+const BRANCHES = "子丑寅卯辰巳午未申酉戌亥".split("");
+const GZ60 = Array.from({length:60}, (_,i)=>STEMS[i%10]+BRANCHES[i%12]);
+const PALACE_ORDER = ["巽","離","坤","震","中","兌","艮","坎","乾"];
+const RING = ["坎","艮","震","巽","離","坤","兌","乾"];
+const PALACE_NUM = {"坎":1,"坤":2,"震":3,"巽":4,"中":5,"乾":6,"兌":7,"艮":8,"離":9};
+const NUM_PALACE = {1:"坎",2:"坤",3:"震",4:"巽",5:"中",6:"乾",7:"兌",8:"艮",9:"離"};
+const PALACE_DIR = {"坎":"北方","坤":"西南方","震":"東方","巽":"東南方","中":"中央","乾":"西北方","兌":"西方","艮":"東北方","離":"南方"};
+const PALACE_ELEM = {"坎":"水","坤":"土","震":"木","巽":"木","中":"土","乾":"金","兌":"金","艮":"土","離":"火"};
+const STAR_ORIGIN = {"坎":"天蓬","艮":"天任","震":"天沖","巽":"天輔","離":"天英","坤":"天芮","兌":"天柱","乾":"天心"};
+const DOOR_ORIGIN = {"坎":"休門","艮":"生門","震":"傷門","巽":"杜門","離":"景門","坤":"死門","兌":"驚門","乾":"開門"};
+const GROUND_STEMS = ["戊","己","庚","辛","壬","癸","丁","丙","乙"];
+const GOD_ORDER = ["值符","螣蛇","太陰","六合","白虎","玄武","九地","九天"];
+const HOUR_START_STEM = {"甲":"甲","己":"甲","乙":"丙","庚":"丙","丙":"戊","辛":"戊","丁":"庚","壬":"庚","戊":"壬","癸":"壬"};
+const MONTH_START_STEM = {"甲":"丙","己":"丙","乙":"戊","庚":"戊","丙":"庚","辛":"庚","丁":"壬","壬":"壬","戊":"甲","癸":"甲"};
+const MONTH_JIE = [
+  {name:"立春",m:2,d:4,branch:"寅",idx:0},{name:"驚蟄",m:3,d:6,branch:"卯",idx:1},{name:"清明",m:4,d:5,branch:"辰",idx:2},
+  {name:"立夏",m:5,d:6,branch:"巳",idx:3},{name:"芒種",m:6,d:6,branch:"午",idx:4},{name:"小暑",m:7,d:7,branch:"未",idx:5},
+  {name:"立秋",m:8,d:8,branch:"申",idx:6},{name:"白露",m:9,d:8,branch:"酉",idx:7},{name:"寒露",m:10,d:8,branch:"戌",idx:8},
+  {name:"立冬",m:11,d:7,branch:"亥",idx:9},{name:"大雪",m:12,d:7,branch:"子",idx:10},{name:"小寒",m:1,d:6,branch:"丑",idx:11}
+];
+const XUNS = [
+  {start:"甲子",hidden:"戊",kong:"戌亥",from:0},{start:"甲戌",hidden:"己",kong:"申酉",from:10},{start:"甲申",hidden:"庚",kong:"午未",from:20},
+  {start:"甲午",hidden:"辛",kong:"辰巳",from:30},{start:"甲辰",hidden:"壬",kong:"寅卯",from:40},{start:"甲寅",hidden:"癸",kong:"子丑",from:50}
+];
+const BRANCH_PALACE = {"子":"坎","丑":"艮","寅":"艮","卯":"震","辰":"巽","巳":"巽","午":"離","未":"坤","申":"坤","酉":"兌","戌":"乾","亥":"乾"};
+const STEM_TOMB = {"甲":"坤","乙":"乾","丙":"乾","丁":"艮","戊":"乾","己":"艮","庚":"艮","辛":"巽","壬":"巽","癸":"坤"};
+const STEM_PUNISH = {"壬":"巽","癸":"巽","戊":"震","己":"坤"};
+const DOOR_ELEM = {"休門":"水","生門":"土","傷門":"木","杜門":"木","景門":"火","死門":"土","驚門":"金","開門":"金"};
+const ELEM_KE = {"木":"土","土":"水","水":"火","火":"金","金":"木"};
+const ELEM_SHENG = {"木":"火","火":"土","土":"金","金":"水","水":"木"};
+const BRANCH_NO = {"子":1,"丑":2,"寅":3,"卯":4,"辰":5,"巳":6,"午":7,"未":8,"申":9,"酉":10,"戌":11,"亥":12};
+const CN_MONTH = ["","正月","二月","三月","四月","五月","六月","七月","八月","九月","十月","冬月","臘月"];
+const CN_DAY_PREFIX = ["初","十","廿","卅"];
+const CN_NUM = ["","一","二","三","四","五","六","七","八","九","十"];
+
+// 1900-2050 農曆資料，常見萬年曆編碼。1900-01-31 為農曆庚子年正月初一。
+const LUNAR_INFO = [
+0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,
+0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,
+0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+0x14b63
+];
+
+// ===== 報數鎖單宮與紅綠規則：依使用者提供規則校準 =====
+const LOCK_NUM_TO_PALACE_NUM = {1:1,2:2,3:3,4:4,5:2,6:6,7:7,8:8,9:9};
+const DIRECT_DENY = {
+  god:new Set(["白虎"]),
+  star:new Set(["天蓬","天芮"]),
+  door:new Set(["死門"]),
+  stem:new Set(["庚"]),
+  flag:new Set(["空"])
+};
+const SCORE = {
+  door:{"開門":40,"休門":40,"生門":40,"死門":-100},
+  star:{"天輔":20,"天心":20,"天任":20,"天蓬":-100,"天芮":-100},
+  god:{"值符":20,"太陰":20,"六合":20,"九天":20,"白虎":-100},
+  stem:{"乙":10,"丙":10,"丁":10,"戊":10,"庚":-100},
+  flag:{"空":-100}
+};
+const DOOR_ADVICE = {
+  "開門":"適合開啟、見客、工作面試、談機會、做公開行動。",
+  "休門":"適合休整、談和、修復關係、養精蓄銳、低調處理。",
+  "生門":"適合求財、合作、報價、收款、增加資源與人脈。",
+  "景門":"適合文書、曝光、說明、簡報，但話要準、資料要留底。",
+  "杜門":"適合保密、整理、內部規劃，不宜硬推或逼對方表態。",
+  "傷門":"防衝突、急躁、受傷、破財；今天宜慢，不宜硬碰硬。",
+  "驚門":"防口舌、驚擾、訊息反覆；先查證再回覆。",
+  "死門":"適合收尾、結束、封存舊事，不宜開新局或重押。"
+};
+const GOD_ADVICE = {
+  "值符":"有主導力，可當主場使用，但要承擔責任。","六合":"利合作、人緣、和解、談條件。","太陰":"利暗中準備、文書細節、女性貴人。","九天":"利遠方、高目標、曝光與提升格局。","九地":"利穩守、存錢、打基礎、處理土地房屋。","螣蛇":"防糾纏、猜疑、虛驚與想太多。","玄武":"防隱瞞、口頭承諾、資訊不透明。","白虎":"防衝突、刀火金屬、受傷與強硬對抗。"
+};
+
+let chart = null;
+let selectedNum = null;
+
+// ===== 工具函數 =====
+function pad(n){return String(n).padStart(2,"0")}
+function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
+function unique(arr){return [...new Set(arr.filter(Boolean))]}
+function escapeHTML(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]))}
+function parseDT(){const v=document.getElementById("dt").value;if(!v)return null;const [date,time]=v.split("T");const [y,m,d]=date.split("-").map(Number);const [hh,mm]=time.split(":").map(Number);return {y,m,d,hh,mm}}
+function fmtDT(p){return `${p.y}-${pad(p.m)}-${pad(p.d)} ${pad(p.hh)}:${pad(p.mm)}`}
+function jdn(y,m,d){let a=Math.floor((14-m)/12);let y2=y+4800-a;let m2=m+12*a-3;return d+Math.floor((153*m2+2)/5)+365*y2+Math.floor(y2/4)-Math.floor(y2/100)+Math.floor(y2/400)-32045}
+function dateAddDays(p,delta){const dt=new Date(p.y,p.m-1,p.d+delta,p.hh||0,p.mm||0);return {y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate(),hh:dt.getHours(),mm:dt.getMinutes()}}
+function gzFromIndex(i){return GZ60[(i%60+60)%60]}
+function stemOf(gz){return gz?.[0]||""} function branchOf(gz){return gz?.[1]||""}
+function dayIndex(p,ziChange){const pp=(ziChange&&p.hh>=23)?dateAddDays(p,1):p;return (jdn(pp.y,pp.m,pp.d)+49)%60}
+function yearGZ(p){const useY=(p.m<2||(p.m===2&&p.d<4))?p.y-1:p.y;return gzFromIndex((useY-4)%60)}
+function monthInfo(p,yearStem){let info=MONTH_JIE[10]; for(const j of MONTH_JIE){ if(j.m===1) continue; if(p.m>j.m||(p.m===j.m&&p.d>=j.d)) info=j; } if(p.m===1&&p.d>=6) info=MONTH_JIE[11]; const start=MONTH_START_STEM[yearStem]||"丙"; const stem=STEMS[(STEMS.indexOf(start)+info.idx)%10]; return {stem,branch:info.branch,jie:info.name}}
+function hourGZ(p,dayStem){let bi=Math.floor((p.hh+1)/2)%12; if(p.hh===23)bi=0; const start=HOUR_START_STEM[dayStem]||"甲"; const stem=STEMS[(STEMS.indexOf(start)+bi)%10]; return stem+BRANCHES[bi]}
+function xunForGZ(gz){const idx=GZ60.indexOf(gz);return XUNS[Math.floor(idx/10)]||XUNS[0]}
+function normalizePalace(p){return p==="中"?"坤":p}
+function ringIndex(p){return RING.indexOf(normalizePalace(p))}
+function shiftPalace(p,delta){const i=ringIndex(p); if(i<0)return p; return RING[(i+delta+800)%8]}
+function palaceByNumber(n){return NUM_PALACE[Number(n)]||"中"}
+function numberSeq(ju,dun){let n=ju,seq=[]; for(let i=0;i<9;i++){seq.push(n); n=dun==="陽" ? (n%9)+1 : (n===1?9:n-1)} return seq}
+function addStem(map,p,stem){if(!stem)return; p=normalizePalace(p); if(!map[p])map[p]=[]; map[p].push(stem)}
+function buildGround(ju,dun){const nums=numberSeq(ju,dun); const g={}; nums.forEach((num,i)=>addStem(g,palaceByNumber(num),GROUND_STEMS[i])); return g}
+function findStemPalace(stem,map){for(const p of Object.keys(map)){ if((map[p]||[]).includes(stem))return p } return ""}
+function rotateMap(source,offset){const out={}; for(const p of RING){(source[p]||[]).forEach(st=>addStem(out,shiftPalace(p,offset),st))} return out}
+function doorOffsetFor(mode,xunPalace,xun,hgz,ju,dun,starOffset){
+  if(mode==="star") return starOffset;
+  if(mode==="classic"){
+    const step=(GZ60.indexOf(hgz)-xun.from+800)%8;
+    const target=shiftPalace(xunPalace,dun==="陽"?step:-step);
+    return ringIndex(target)-ringIndex(xunPalace);
+  }
+  // 九宮鎖單宮校準：依六甲遁干序數定八門偏移。此模式可對上使用者提供的兩張樣本盤。
+  return (STEMS.indexOf(xun.hidden)+1)%8;
+}
+function yimaByBranch(br){if(["申","子","辰"].includes(br))return "寅"; if(["寅","午","戌"].includes(br))return "申"; if(["亥","卯","未"].includes(br))return "巳"; if(["巳","酉","丑"].includes(br))return "亥"; return ""}
+
+// ===== 農曆 =====
+function leapMonth(y){return LUNAR_INFO[y-1900]&0xf}
+function leapDays(y){return leapMonth(y)?((LUNAR_INFO[y-1900]&0x10000)?30:29):0}
+function monthDays(y,m){return (LUNAR_INFO[y-1900]&(0x10000>>m))?30:29}
+function lunarYearDays(y){let sum=348; for(let i=0x8000;i>0x8;i>>=1){ if(LUNAR_INFO[y-1900]&i)sum++ } return sum+leapDays(y)}
+function solarToLunar(y,m,d){
+  if(y<1900||y>2050) throw new Error("農曆資料目前支援 1900-2050。")
+  const base=new Date(1900,0,31); const cur=new Date(y,m-1,d); let offset=Math.floor((cur-base)/86400000);
+  let ly=1900; while(ly<2051 && offset>=lunarYearDays(ly)){offset-=lunarYearDays(ly); ly++}
+  const leap=leapMonth(ly); let isLeap=false; let lm=1;
+  while(lm<=12){const md=isLeap?leapDays(ly):monthDays(ly,lm); if(offset<md)break; offset-=md; if(leap===lm&&!isLeap){isLeap=true}else{if(isLeap)isLeap=false; lm++}}
+  return {year:ly,month:lm,day:offset+1,isLeap};
+}
+function cnDay(d){if(d===10)return "初十"; if(d===20)return "二十"; if(d===30)return "三十"; return CN_DAY_PREFIX[Math.floor(d/10)] + CN_NUM[d%10]}
+function lunarText(l){return `${l.year}年 ${l.isLeap?"閏":""}${CN_MONTH[l.month]} ${cnDay(l.day)}`}
+function yinpanJu(meta){const yNo=BRANCH_NO[meta.yearBranch], mNo=meta.lunar.month, dNo=meta.lunar.day, hNo=BRANCH_NO[meta.hourBranch]; let r=(yNo+mNo+dNo+hNo)%9; if(r===0)r=9; return {num:r, formula:`${meta.yearBranch}${yNo}＋農${mNo}月＋農${dNo}日＋${meta.hourBranch}${hNo}＝${yNo+mNo+dNo+hNo}，除9餘${r}`}}
+
+// ===== 排盤 =====
+function buildChart(){
+  try{
+    const p=parseDT(); if(!p){alert("請輸入起盤時間");return}
+    const ziChange=document.getElementById("ziChange").value==="true";
+    const yGZ=yearGZ(p); const yStem=stemOf(yGZ), yBranch=branchOf(yGZ);
+    const mInfo=monthInfo(p,yStem); const dIdx=dayIndex(p,ziChange); const dGZ=gzFromIndex(dIdx); const hGZ=hourGZ(p,stemOf(dGZ));
+    const lunar=solarToLunar(p.y,p.m,p.d); const metaBase={yearBranch:yBranch,lunar,hourBranch:branchOf(hGZ)}; const ju=yinpanJu(metaBase);
+    const dun="陰"; const xun=xunForGZ(hGZ); const ground=buildGround(ju.num,dun);
+    const xunPalace=normalizePalace(findStemPalace(xun.hidden,ground)||"坤");
+    const timeStem=stemOf(hGZ); const timeGroundStem=timeStem==="甲"?xun.hidden:timeStem; const timePalace=normalizePalace(findStemPalace(timeGroundStem,ground)||xunPalace);
+    const starOffset=ringIndex(timePalace)-ringIndex(xunPalace); const heaven=rotateMap(ground,starOffset);
+    const doorMode=document.getElementById("doorMode").value; const dOff=doorOffsetFor(doorMode,xunPalace,xun,hGZ,ju.num,dun,starOffset);
+    const starMap={},doorMap={},godMap={}; Object.entries(STAR_ORIGIN).forEach(([pal,s])=>starMap[shiftPalace(pal,starOffset)]=s); Object.entries(DOOR_ORIGIN).forEach(([pal,d])=>doorMap[shiftPalace(pal,dOff)]=d);
+    GOD_ORDER.forEach((g,i)=>godMap[shiftPalace(timePalace,dun==="陽"?i:-i)]=g);
+    const emptyBranches=xun.kong.split(""); const emptyPalaces=unique(emptyBranches.map(b=>BRANCH_PALACE[b])); const yima=yimaByBranch(branchOf(hGZ)); const yimaPalace=BRANCH_PALACE[yima];
+    const zhifu=STAR_ORIGIN[xunPalace]||""; const zhishi=DOOR_ORIGIN[xunPalace]||"";
+    const palaces=PALACE_ORDER.map(key=>{
+      if(key==="中") return {key,number:5,isCenter:true,flags:[],top:[],bottom:[],god:"",star:"",door:""};
+      const top=heaven[key]||[]; const bottom=ground[key]||[]; const door=doorMap[key]||""; const flags=[];
+      if(emptyPalaces.includes(key))flags.push("空"); if(yimaPalace===key)flags.push("馬");
+      const all=top.concat(bottom); if(all.some(st=>STEM_TOMB[st]===key))flags.push("墓"); if(all.some(st=>STEM_PUNISH[st]===key))flags.push("刑");
+      if(door){const de=DOOR_ELEM[door], pe=PALACE_ELEM[key]; if(ELEM_KE[de]===pe)flags.push("迫"); else if(ELEM_KE[pe]===de)flags.push("制")}
+      return {key,number:PALACE_NUM[key],god:godMap[key]||"",star:starMap[key]||"",door,top,bottom,flags:unique(flags)};
+    });
+    chart={
+      version:"3.0", settings:{qtype:document.getElementById("qtype").value,doorMode,ziChange},
+      meta:{solar:fmtDT(p),lunar:lunarText(lunar),yearGZ:yGZ,yearStem:yStem,yearBranch:yBranch,monthStem:mInfo.stem,monthBranch:mInfo.branch,dayStem:stemOf(dGZ),dayBranch:branchOf(dGZ),hourStem:stemOf(hGZ),hourBranch:branchOf(hGZ),monthGZ:mInfo.stem+mInfo.branch,dayGZ:dGZ,hourGZ:hGZ,ju:`陰${CN_NUM[ju.num]}局`,juNum:ju.num,juFormula:ju.formula,xunshou:`${xun.start}旬`,futou:xun.hidden,kongwang:xun.kong,yima,zhifu,zhishi,xunPalace,timePalace,starOffset,doorOffset:dOff},
+      palaces
+    };
+    renderAll(); setNote(`已排：${yGZ}年 ${mInfo.stem+mInfo.branch}月 ${dGZ}日 ${hGZ}時；農曆${lunarText(lunar)}；${chart.meta.ju}；旬首${xun.start}、符頭${xun.hidden}、空亡${xun.kong}、驛馬${yima}。局數公式：${ju.formula}。`);
+  }catch(err){alert(err.message||err);}
+}
+
+// ===== 分數 =====
+function contribution(type,sym){return (SCORE[type]&&SCORE[type][sym])||0}
+function lockedPalaceNumber(n){return LOCK_NUM_TO_PALACE_NUM[Number(n)]||Number(n)}
+function denyReason(type,sym){return {"god":"大凶八神","star":"大凶九星","door":"大凶八門","stem":"大凶天干","flag":"大凶特殊象"}[type] + `：${sym}`}
+function scorePalace(p,qtype){
+  if(!p||p.isCenter)return {score:0,reasons:[{label:"中宮不用",value:0,text:"九宮奇門報數 5 改取坤二宮，不直接看中宮。"}],grade:grade(0)};
+  return scorePalaceRaw(p,qtype);
+}
+function scorePalaceRaw(p,qtype){
+  let score=0; const reasons=[]; const deniers=[];
+  function deny(type,sym,text){if(sym&&DIRECT_DENY[type]&&DIRECT_DENY[type].has(sym)){deniers.push({label:denyReason(type,sym),value:0,text})}}
+  function add(type,label,sym,text){const value=contribution(type,sym); if(value>0){score+=value; reasons.push({label,value,text})}}
+  deny("god",p.god,`${p.god}：PDF 規則列為綠色大凶，直接否定。`);
+  deny("star",p.star,`${p.star}：PDF 規則列為綠色大凶，直接否定。`);
+  deny("door",p.door,`${p.door}：PDF 規則列為綠色大凶，直接否定。`);
+  p.top.concat(p.bottom).forEach(st=>deny("stem",st,`${st}：PDF 規則列為綠色大凶天干，直接否定。`));
+  p.flags.forEach(f=>deny("flag",f,flagText(f)));
+  if(deniers.length)return {score:0,reasons:deniers,denied:true,deniers,grade:{name:"直接否定",cls:"score-bad"}};
+  add("god",p.god,p.god,`${p.god}：紅色吉神，有神助或人事助力。`);
+  add("star",p.star,p.star,`${p.star}：紅色吉星，事情有發展性。`);
+  add("door",p.door,p.door,`${p.door}：紅色吉門，門路、方法或行動方式可用。`);
+  p.top.concat(p.bottom).forEach(st=>add("stem",st,st,`${st}：紅色吉干，主機會、光明、轉機或財氣。`));
+  score=clamp(Math.round(score),0,100); return {score,reasons,denied:false,deniers:[],grade:grade(score)};
+}
+function grade(score){if(score>=80)return {name:"大吉",cls:"score-good"}; if(score>=60)return {name:"主吉",cls:"score-good"}; if(score>0)return {name:"未達 60",cls:"score-bad"}; return {name:"不採用",cls:"score-bad"}}
+function doorMeaning(d){return {"開門":"開啟、事業、門路、機會。","休門":"休整、和解、貴人、修復。","生門":"財源、資源、生機、合作利益。","景門":"文書、曝光、名聲、說明。","杜門":"閉塞、保密、內部、卡點。","傷門":"衝突、損傷、急躁、破耗。","驚門":"口舌、驚擾、消息反覆。","死門":"停滯、結束、舊事、僵局。"}[d]||""}
+function starMeaning(s){return {"天心":"理性、醫藥、管理、方案。","天輔":"文教、輔助、貴人、專業。","天任":"穩定、承擔、慢成。","天英":"表現、名聲、靈感、火氣。","天沖":"行動、突發、衝勁。","天蓬":"風險、欲望、暗流。","天芮":"病符、問題、瑕疵。","天柱":"口舌、壓力、阻隔。"}[s]||""}
+function flagText(f){return {"空":"空亡：事情未實、等待填實，不宜重押。","馬":"驛馬：有移動、變化、外出與轉換象。","墓":"入墓：氣被收住，進展慢，宜先整理。","刑":"擊刑：內部衝突、卡住或自我糾結。","迫":"門迫：門克宮，行動方式壓迫環境，易出問題。","制":"門制：宮克門，環境壓住行動，進展受限。"}[f]||f}
+function classByScore(type,sym){const v=(SCORE[type]&&SCORE[type][sym])||0; return v>0?"good-text":v<0?"bad-text":"neutral-text"}
+function flagClass(f){return DIRECT_DENY.flag.has(f)||["刑","迫","墓"].includes(f)?"bad":["馬"].includes(f)?"good":"warn"}
+function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
+
+// ===== 渲染 =====
+function renderAll(){renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport();}
+function setNote(t){document.getElementById("autoNote").textContent=t}
+function renderNums(){const pad=document.getElementById("numPad"); if(!pad.dataset.ready){pad.innerHTML=""; [1,2,3,4,5,6,7,8,9].forEach(n=>{const b=document.createElement("button"); b.className="num-btn"; b.textContent=n; b.title=n===5?"5 改取坤二宮":""; b.innerHTML=n===5?"5<span>→2</span>":String(n); b.onclick=()=>{selectedNum=n; renderAll()}; pad.appendChild(b)}); pad.dataset.ready="1"} Array.from(pad.children).forEach((b,i)=>{const n=i+1; b.classList.toggle("active",selectedNum===n); b.classList.remove("good","bad"); if(chart){const p=getPalaceByNum(n); const sc=scorePalace(p,chart.settings.qtype).score; if(sc>=60)b.classList.add("good"); if(sc<60)b.classList.add("bad")}})}
+function renderMeta(){const box=document.getElementById("metaGrid"); if(!chart){box.innerHTML="";return} const m=chart.meta; const pairs=[["西元",m.solar],["農曆",m.lunar],["四柱",`${m.yearGZ}　${m.monthGZ}　${m.dayGZ}　${m.hourGZ}`],["起局",`${m.ju}｜陰盤`],["旬首",m.xunshou],["符頭",m.futou],["空亡",m.kongwang],["驛馬",m.yima],["值符",m.zhifu],["值使",m.zhishi],["局數公式",m.juFormula],["門法",document.getElementById("doorMode").selectedOptions[0].textContent]]; box.innerHTML=pairs.map(([a,b])=>`<div class="meta"><span>${a}</span><strong>${escapeHTML(b)}</strong></div>`).join(""); document.getElementById("chartBadge").textContent=`${m.ju}・${m.zhifu}・${m.zhishi}`; const ov=overallScore(); document.getElementById("metricOverall").textContent=`${ov}/100`;}
+function stemSpan(st,pal){const tags=[]; if(STEM_TOMB[st]===pal)tags.push("墓"); if(STEM_PUNISH[st]===pal)tags.push("刑"); const cls=classByScore("stem",st); return `<span class="${cls}">${st}</span>${tags.map(t=>`<span class="small-tag ${t==="刑"?"bad-text":"muted-text"}">${t}</span>`).join("")}`}
+function stemGroup(stems,pal){return stems.length?stems.map(st=>stemSpan(st,pal)).join(""):`<span class="muted-text">無</span>`}
+function flagGroup(flags){return flags.length?flags.map(f=>`<span class="flag ${flagClass(f)}">${f}</span>`).join(""):`<span class="muted-text">無</span>`}
+function selectPalaceNumber(n){selectedNum=Number(n); renderAll();}
+function renderGrid(){const grid=document.getElementById("palaceGrid"); if(!chart){grid.innerHTML="<div class='palace center' style='grid-column:1/4'>請先輸入時間並開始排盤</div>"; return} const q=chart.settings.qtype; grid.innerHTML=chart.palaces.map(p=>{
+  const sel=lockedPalaceNumber(selectedNum)===p.number; if(p.isCenter){return `<div class="palace center" data-num="5"><div><strong>中宮 5</strong><br>報數 5 改取坤 2<br><span class="score-pill score-mid">不直斷</span></div></div>`}
+  const s=scorePalaceRaw(p,q); const sc=s.score; const bg=s.denied||sc<60?"bad-bg":"good-bg"; const scoreText=s.denied?"否":sc;
+  return `<button type="button" class="palace ${bg} ${sel?"selected":""}" data-num="${p.number}" onclick="selectPalaceNumber(${p.number})" aria-label="鎖定${p.key}${p.number}宮">
+    <div class="palace-top"><span class="palace-id">${p.key}<small>${p.number}</small></span><span class="god ${classByScore("god",p.god)}">${p.god||"　"}</span></div>
+    <div class="palace-mid"><span class="sym ${classByScore("star",p.star)}">${p.star||"　"}</span><span class="stems">${stemGroup(p.top,p.key)}</span></div>
+    <div class="palace-bottom"><span class="sym ${classByScore("door",p.door)}">${p.door||"　"}</span><span class="stems muted-text">${stemGroup(p.bottom,p.key)}</span></div>
+    <div class="palace-top"><span class="flagrow">${flagGroup(p.flags)}</span><span class="palace-score">${scoreText}</span></div>
+  </button>`}).join("");
+}
+function getPalaceByNum(n){return chart?.palaces.find(p=>p.number===lockedPalaceNumber(n))||null}
+function renderLockedPanel(){
+  const box=document.getElementById("lockedPalacePanel"); if(!box)return;
+  if(!chart){box.innerHTML=`<div class="locked-empty">開盤後選一個數字，這裡會直接顯示你鎖定的宮位。</div>`; return}
+  if(!selectedNum){box.innerHTML=`<div class="locked-empty">已開盤。請選 1-9 一個數字，系統會直接抓出對應宮位。</div>`; return}
+  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s);
+  const lockNote=Number(selectedNum)===5?"5 改取 2｜":""; const statusClass=s.denied?"lock-denied":s.score>=60?"lock-good":"lock-bad";
+  const statusText=s.denied?"直接否定":`${s.score}/100｜${s.grade.name}`;
+  const reason=s.reasons.length?s.reasons.slice(0,3).map(r=>`<div class="symbol-box"><span>${escapeHTML(r.label)}</span><strong>${r.value>0?"+":""}${r.value}</strong></div>`).join(""):"";
+  box.innerHTML=`<div class="locked-card ${statusClass}">
+    <div class="locked-head">
+      <div class="locked-title"><div class="locked-num">${selectedNum}</div><div><h3>${lockNote}鎖 ${p.key}${p.number}宮</h3><small>${PALACE_DIR[p.key]}｜${PALACE_ELEM[p.key]}｜${chart.settings.qtype}</small></div></div>
+      <div class="locked-status">${statusText}</div>
+    </div>
+    <div class="locked-symbols">
+      <div class="symbol-box"><span>八神</span><strong class="${classByScore("god",p.god)}">${p.god||"無"}</strong></div>
+      <div class="symbol-box"><span>九星</span><strong class="${classByScore("star",p.star)}">${p.star||"無"}</strong></div>
+      <div class="symbol-box"><span>八門</span><strong class="${classByScore("door",p.door)}">${p.door||"無"}</strong></div>
+      <div class="symbol-box"><span>天盤干</span><strong>${stemGroup(p.top,p.key)}</strong></div>
+      <div class="symbol-box"><span>地盤干</span><strong>${stemGroup(p.bottom,p.key)}</strong></div>
+      <div class="symbol-box"><span>特殊象</span><strong>${flagGroup(p.flags)}</strong></div>
+      ${reason}
+    </div>
+    <div class="locked-summary"><strong>總斷</strong>${escapeHTML(summary.total)}</div>
+  </div>`;
+}
+function renderResult(){
+  const metricLock=document.getElementById("metricLock"), metricScore=document.getElementById("metricScore");
+  if(!chart||!selectedNum){document.getElementById("resultSub").textContent="請先排盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; metricLock.textContent="未選數"; metricScore.textContent="—"; return}
+  const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const lockNote=Number(selectedNum)===5?"（5 改取 2）":""; metricLock.textContent=`${selectedNum}${lockNote}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"直接否定":s.score+"/100 "+s.grade.name}`;
+  document.getElementById("resultSub").textContent=`${selectedNum} 號${lockNote}鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${s.grade.name}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
+  document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">${p.key}${p.number}</span>`,`<span class="tab">${chart.settings.qtype}</span>`,`<span class="tab">${chart.meta.ju}</span>`].join("");
+  const summary = makeSummary(p,s);
+  const reasonHtml=s.reasons.slice(0,9).map(r=>`<div class="item"><strong>${escapeHTML(r.label)} ${r.value>0?"+":""}${r.value}</strong>${escapeHTML(r.text)}</div>`).join("");
+  document.getElementById("resultList").innerHTML=`<div class="item"><strong>總斷</strong>${escapeHTML(summary.total)}</div><div class="item"><strong>行動建議</strong>${escapeHTML(summary.action)}</div><div class="item"><strong>風水改善</strong>${escapeHTML(summary.fengshui)}</div>${reasonHtml}`;
+}
+function makeSummary(p,s){
+  const dir=PALACE_DIR[p.key]; if(s.denied){const hit=s.deniers.map(x=>x.label.replace(/^大凶../,"")).join("、"); return {total:`鎖 ${selectedNum}${Number(selectedNum)===5?"（5 改取 2）":""} 入 ${p.key}宮，見 ${hit}，依直接否定法判為不宜採用。`, action:"先暫停，不硬推。若是重要決策，換時間再問，或先排除風險、確認資訊後再行動。", fengshui:`${dir}今日宜靜不宜動：保持乾淨、避免敲打修繕、避免在此方爭吵或做大額決定。`}}
+  const good=s.score>=60, bad=s.score<60;
+  let total=good?`鎖 ${selectedNum}${Number(selectedNum)===5?"（5 改取 2）":""} 入 ${p.key}宮，${dir}可用，紅色吉符號合計 ${s.score} 分，達 60 分以上，主吉。`:`鎖 ${selectedNum}${Number(selectedNum)===5?"（5 改取 2）":""} 入 ${p.key}宮，${dir}紅色吉符號合計 ${s.score} 分，未達 60 分，主凶或成功率不足。`;
+  let action=`${DOOR_ADVICE[p.door]||"先看門星神與空墓刑迫。"} ${GOD_ADVICE[p.god]||""}`;
+  if(p.flags.includes("空")) action += " 此宮逢空，承諾與消息要等白紙黑字，不宜一次押重。";
+  if(p.flags.includes("迫")||p.flags.includes("刑")) action += " 有迫或刑，說話、簽約、開車與金錢動作都要慢。";
+  if(p.flags.includes("馬")) action += " 有驛馬，可用於出門、移動、轉換，但要先確認路線與時間。";
+  let fengshui = good ? `${dir}今日可輕度啟動：整理乾淨、開燈 15-30 分鐘、放正在使用的文件或計畫；若談合作財務，可面向此方發訊息。` : `${dir}今日宜靜不宜動：收雜物、關櫃門、移開尖銳物，不在此方爭吵、敲打、修繕或做大額決定。`;
+  const elem=PALACE_ELEM[p.key]; if(good){ if(elem==="木")fengshui += " 可放健康綠植或木質物。"; if(elem==="火")fengshui += " 可用溫和燈光，不用強光。"; if(elem==="土")fengshui += " 可放陶瓷、石材或穩重物件。"; if(elem==="金")fengshui += " 可用白色、金屬或圓形物件。"; if(elem==="水")fengshui += " 可放一杯乾淨清水，但不可髒水或漏水。"}
+  return {total,action,fengshui}
+}
+function renderReport(){document.getElementById("reportBox").textContent=makeReport()}
+function makeReport(){
+  if(!chart)return "尚未產生報告。"; const m=chart.meta; let out=[]; out.push(`九宮奇門鎖單宮報告`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
+  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); const lockNote=Number(selectedNum)===5?"（5 改取 2）":""; out.push(""); out.push(`鎖定數字：${selectedNum}${lockNote}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`總斷：${summary.total}`); out.push(`行動建議：${summary.action}`); out.push(`風水改善：${summary.fengshui}`); out.push(""); out.push(s.denied?`否定依據：`:`加分依據：`); s.reasons.forEach(r=>out.push(`- ${r.label} ${r.value>0?"+":""}${r.value}：${r.text}`));}
+  else out.push("\n尚未選 1-9 鎖單宮。");
+  return out.join("\n")
+}
+
+// ===== 匯出 =====
+function download(name,text,type="text/plain;charset=utf-8"){const blob=new Blob([text],{type}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    try{await navigator.clipboard.writeText(text); return true}catch(e){}
+  }
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.left="-9999px"; ta.style.top="0"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    if(ta.setSelectionRange)ta.setSelectionRange(0,ta.value.length);
+    return document.execCommand("copy");
+  }catch(e){return false}
+  finally{document.querySelectorAll("textarea[readonly][style*='-9999px']").forEach(el=>el.remove())}
+}
+function toast(msg){setNote(msg)}
+
+// ===== 初始化 =====
+function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`}
+function init(){
+  const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
+  renderAll();
+  document.getElementById("quickExample").onclick=()=>{setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; buildChart(); selectedNum=7; renderAll();};
+  document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
+  document.getElementById("buildBtn").onclick=buildChart;
+  document.getElementById("printBtn").onclick=()=>window.print();
+  document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").textContent=text; toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
+  document.getElementById("downloadTxt").onclick=()=>download("九宮奇門鎖單宮報告.txt",makeReport());
+  document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify({chart,selectedNum},null,2),"application/json;charset=utf-8");
+  document.getElementById("qtype").addEventListener("change",()=>{if(chart){chart.settings.qtype=document.getElementById("qtype").value; renderAll();}});
+  ["doorMode","ziChange"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{if(chart)buildChart()}));
+}
+init();
+</script>
+</body>
+</html>
