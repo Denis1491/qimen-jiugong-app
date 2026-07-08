@@ -641,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-17").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-18").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1649,6 +1649,18 @@ function calibrationHints(stats){
   if(!hints.length)hints.push("目前回驗走向穩定，但仍建議累積到 30 筆以上再調整權重。");
   return hints;
 }
+function calibrationAdvice(stats){
+  const advice=[];
+  const count=name=>stats.byCalibration.get(name)?.count||0;
+  if(count("說得太死"))advice.push("把「一定、必然、不能」改成「目前條件下、先不要重押、先驗證」。");
+  if(count("需改成風險降級"))advice.push("低分或凶象不要直接判死，改成風險類型、損失上限與下一個最小行動。");
+  if(count("應事不同"))advice.push("回看題型與應驗象，標註這個象到底落在財、口舌、流程、感情或心理壓力。");
+  if(count("只是延遲"))advice.push("把延遲象從「不成」改成「條件未實、等待補件或時間成熟」。");
+  if(stats.lowAccuracy>0)advice.push("2 星以下案例先查問題是否太大、選宮是否不清、行動建議是否過度推進。");
+  if(stats.actionEffectCount&&stats.riskReducedPositive<stats.riskReducedCount)advice.push("比較未降低風險的行動，找出哪些建議太抽象、太晚做或成本太高。");
+  if(!advice.length)advice.push("目前先繼續累積案例，滿 30 筆後再調整權重與文案。");
+  return uniqueText(advice);
+}
 function renderBucketList(items){
   if(!items.length)return "<span>待累積</span>";
   return items.map(item=>{
@@ -1741,6 +1753,7 @@ function renderCaseStats(allCases=loadCases()){
     <p><strong>高分常見依據</strong><span>${escapeHTML(topHigh)}</span></p>
     <p><strong>低分待查依據</strong><span>${escapeHTML(topLow)}</span></p>
   </div>
+  <ul class="case-hints">${calibrationAdvice(stats).map(h=>`<li>${escapeHTML(h)}</li>`).join("")}</ul>
   <ul class="case-hints">${calibrationHints(stats).map(h=>`<li>${escapeHTML(h)}</li>`).join("")}</ul>`;
 }
 function buildCaseCalibrationSummary(cases=loadCases()){
@@ -1773,6 +1786,9 @@ function buildCaseCalibrationSummary(cases=loadCases()){
     "",
     "六、回驗提醒",
     calibrationHints(stats).map(h=>`- ${h}`).join("\n"),
+    "",
+    "七、校準修正建議",
+    calibrationAdvice(stats).map(h=>`- ${h}`).join("\n"),
     "",
     "提醒：少量案例只作為個人校準線索，不視為正式規則結論。"
   ].join("\n");
@@ -1975,7 +1991,7 @@ function testCaseCalibrationSummary(){
   const text=buildCaseCalibrationSummary([
     {qtype:"合作",outcome:"有結果",afterAction:"有照做",verifiedSymbol:"玄武",riskReduced:"partial",calibration:"downgrade",feedback:{accuracy:"4",hitArea:"工作"}}
   ]);
-  const ok=text.includes("案例校準摘要")&&text.includes("符號落點")&&text.includes("玄武 → 工作")&&text.includes("行動成效")&&text.includes("有照做 → 部分降低")&&text.includes("少量案例");
+  const ok=text.includes("案例校準摘要")&&text.includes("符號落點")&&text.includes("玄武 → 工作")&&text.includes("行動成效")&&text.includes("有照做 → 部分降低")&&text.includes("校準修正建議")&&text.includes("風險類型")&&text.includes("少量案例");
   console.assert(ok,"V5: calibration summary should include progress, symbol hit and action effect.");
   return ok;
 }
