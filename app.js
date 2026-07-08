@@ -1539,6 +1539,14 @@ function caseCompletion(c){
   const missing=checks.filter(([,ok])=>!ok).map(([name])=>name);
   return {done,total:checks.length,missing,percent:Math.round(done/checks.length*100)};
 }
+function caseMatchesReviewFilter(c,filter){
+  if(!filter||filter==="all")return true;
+  const completion=caseCompletion(c);
+  if(filter==="unreviewed")return completion.done===0;
+  if(filter==="incomplete")return completion.done>0&&completion.done<completion.total;
+  if(filter==="complete")return completion.done===completion.total;
+  return true;
+}
 function caseProgressHTML(milestone){
   return `<div class="case-progress">
     <div><strong>100 回驗進度</strong><span>${milestone.done}/100｜已存 ${milestone.total} 筆｜${escapeHTML(milestone.label)}</span></div>
@@ -1584,7 +1592,10 @@ function renderCases(){
   const allCases=loadCases();
   renderCaseStats(allCases);
   const query=(document.getElementById("caseSearch")?.value||"").trim().toLowerCase();
-  const cases=allCases.filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query));
+  const reviewFilter=document.getElementById("caseReviewFilter")?.value||"all";
+  const cases=allCases
+    .filter(c=>!query||[c.title,c.outcome,c.afterAction,c.verifiedSymbol,c.feedback?.verifiedSymbol,c.riskReduced,c.feedback?.riskReduced,c.deviationResult,c.feedback?.deviationResult,c.calibration,c.feedback?.calibration,c.feedback?.afterAction,c.feedback?.hitArea,c.feedback?.notes,c.problemDiagnosis?.suggestedQtype,c.problemDiagnosis?.decisionIntent,c.qtype,c.lockedPalace,c.result,c.summary].join(" ").toLowerCase().includes(query))
+    .filter(c=>caseMatchesReviewFilter(c,reviewFilter));
   if(!cases.length){box.innerHTML=`<div class="case-empty">尚無案例。</div>`; return}
   box.innerHTML=cases.map(c=>{
     const fb=c.feedback||{}; const accuracy=fb.accuracy?`${fb.accuracy} 星`:"未回填"; const hit=fb.hitArea||"未分類";
@@ -1639,6 +1650,7 @@ function init(){
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
   document.getElementById("caseSearch").addEventListener("input",renderCases);
+  document.getElementById("caseReviewFilter").addEventListener("change",renderCases);
   document.getElementById("caseList").addEventListener("click",handleCaseClick);
   document.querySelectorAll(".report-mode").forEach(btn=>btn.addEventListener("click",()=>{
     reportMode=btn.dataset.reportMode||"simple";
@@ -1719,6 +1731,14 @@ function testCaseCompletionMissingFields(){
   console.assert(ok,"V5: case completion should expose missing feedback fields.");
   return ok;
 }
+function testCaseReviewFilter(){
+  const blank={title:"未回驗"};
+  const partial={outcome:"有結果",feedback:{accuracy:"4"}};
+  const complete={outcome:"有結果",afterAction:"有照做",verifiedSymbol:"驚門",riskReduced:"yes",deviationResult:"無",calibration:"accurate",feedback:{accuracy:"4",hitArea:"口舌"}};
+  const ok=caseMatchesReviewFilter(blank,"unreviewed")&&caseMatchesReviewFilter(partial,"incomplete")&&caseMatchesReviewFilter(complete,"complete")&&!caseMatchesReviewFilter(partial,"complete");
+  console.assert(ok,"V5: review filters should separate unreviewed, incomplete and complete cases.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1730,5 +1750,6 @@ function runV5DevTests(){
   testCaseStatsAggregation();
   testMilestoneUsesFeedbackCount();
   testCaseCompletionMissingFields();
+  testCaseReviewFilter();
 }
 init();
