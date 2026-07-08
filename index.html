@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>九宮奇門鎖單宮</title>
-  <meta name="description" content="九宮奇門鎖單宮：輸入時間、選 1-9 一個數字，查看九宮盤與鎖單宮結果。">
-  <meta name="theme-color" content="#a94321">
-  <link rel="manifest" href="manifest.webmanifest?v=copy-bank-11">
-  <link rel="stylesheet" href="style.css?v=copy-bank-11">
+  <title>九宮奇門</title>
+  <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
+  <meta name="theme-color" content="#2f332b">
+  <link rel="manifest" href="manifest.webmanifest?v=ink-1">
+  <link rel="stylesheet" href="style.css?v=ink-1">
 </head>
 <body>
 <div class="shell">
   <header class="hero">
     <div class="hero-main card">
-      <h1>九宮奇門鎖單宮</h1>
+      <h1>九宮奇門</h1>
       <div class="btn-row">
         <button class="btn btn-primary nav-btn" data-view="ask" type="button">問事</button>
         <button class="btn btn-ghost nav-btn" data-view="chart" type="button">看盤</button>
@@ -59,7 +59,7 @@
 
   <section class="view" id="viewChart" data-view-panel="chart">
   <section class="panel card step-actions">
-    <div class="section-title"><div><h2>盤面與分析</h2><small>完整九宮、鎖定宮位、記憶報告。</small></div></div>
+    <div class="section-title"><div><h2>盤面與分析</h2><small>重點先看結果，細節點開查看。</small></div></div>
     <div class="btn-row">
       <button class="btn btn-ghost nav-btn" data-view="ask" type="button">返回問事</button>
       <button class="btn btn-primary nav-btn" data-view="case" type="button">前往儲存</button>
@@ -68,17 +68,23 @@
     </div>
   </section>
   <section class="panel card controls">
-    <div class="section-title"><div><h2>所選宮位</h2><small>下方只顯示你選到的宮。</small></div></div>
-    <div class="locked-palace-panel" id="lockedPalacePanel">
-      <div class="locked-empty">請先起盤，再選一個數字。</div>
-    </div>
+    <div class="section-title"><div><h2>所選宮位</h2><small>預設收合，點開看完整符號。</small></div></div>
+    <details class="info-fold">
+      <summary>展開所選宮位</summary>
+      <div class="locked-palace-panel" id="lockedPalacePanel">
+        <div class="locked-empty">請先起盤，再選一個數字。</div>
+      </div>
+    </details>
   </section>
 
   <main class="app-main">
     <section class="chart-card card">
-      <div class="section-title"><div><h2>九宮盤面</h2><small>點宮位也可查看。</small></div><span class="score-pill score-mid" id="chartBadge">未排盤</span></div>
-      <div class="meta-grid" id="metaGrid"></div>
-      <div class="palace-frame"><div class="palace-grid" id="palaceGrid"></div></div>
+      <div class="section-title"><div><h2>九宮盤面</h2><small>起盤資料與完整盤面預設收合。</small></div><span class="score-pill score-mid" id="chartBadge">未排盤</span></div>
+      <details class="info-fold">
+        <summary>展開起盤資料與九宮盤</summary>
+        <div class="meta-grid" id="metaGrid"></div>
+        <div class="palace-frame"><div class="palace-grid" id="palaceGrid"></div></div>
+      </details>
     </section>
 
     <aside class="result-card card">
@@ -88,7 +94,10 @@
       <div class="grade" id="gradeText">未鎖定</div>
       <div class="bar"><span id="scoreBar"></span></div>
       <div class="tabs" id="reasonTabs"></div>
-      <div class="list" id="resultList"></div>
+      <details class="info-fold">
+        <summary>展開行動建議與依據</summary>
+        <div class="list" id="resultList"></div>
+      </details>
       <hr style="border:0;border-top:1px solid #e4d2bd;margin:16px 0">
       <div class="btn-row">
         <button class="btn btn-teal" id="copyReport">複製報告</button>
@@ -104,12 +113,15 @@
     <div class="section-title">
       <div><h2>報告</h2><small>可切換閱讀深度。</small></div>
       <div class="report-tools">
-        <button class="report-mode active" type="button" data-report-mode="simple">簡明</button>
-        <button class="report-mode" type="button" data-report-mode="detail">詳細</button>
-        <button class="report-mode" type="button" data-report-mode="teacher">老師</button>
+        <button class="report-mode active" type="button" data-report-mode="simple">簡略報告</button>
+        <button class="report-mode" type="button" data-report-mode="detail">詳細報告</button>
+        <button class="report-mode" type="button" data-report-mode="teacher">老師教學</button>
       </div>
     </div>
-    <div class="report" id="reportBox">尚未產生報告。</div>
+    <details class="info-fold report-fold">
+      <summary>展開文字報告</summary>
+      <div class="report" id="reportBox">尚未產生報告。</div>
+    </details>
   </section>
   </section>
 
@@ -144,9 +156,9 @@
   </section>
   </section>
 </div>
-<script src="engine.js?v=copy-bank-11" defer></script>
-<script src="qimen_soul_copy_bank.js?v=copy-bank-11" defer></script>
-<script src="app.js?v=copy-bank-11" defer></script>
+<script src="engine.js?v=ink-1" defer></script>
+<script src="qimen_soul_copy_bank.js?v=ink-1" defer></script>
+<script src="app.js?v=ink-1" defer></script>
 </body>
 </html>
 

@@ -355,9 +355,9 @@ function qtypeAdvice(topic){
 }
 function renderReport(){document.getElementById("reportBox").textContent=makeReport(reportMode)}
 function makeReport(mode=reportMode){
-  if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門鎖單宮報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
-  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮報告`,question?`問事：${question}`:"",`結論：${summary.short}`,`大師斷語：${summary.total}`,`今天怎麼做：${summary.action}`,`先避開：${summary.avoid}`,`補運方法：${summary.fengshui}`].filter(Boolean).join("\n\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`大師斷語：${summary.total}`); out.push(`今天怎麼做：${summary.action}`); out.push(`先避開：${summary.avoid}`); out.push(`補運方法：${summary.fengshui}`); out.push(""); out.push(`提醒：`); s.reasons.forEach(r=>out.push(`- ${r.text}`));}
-  else out.push("\n尚未選 1-9 鎖單宮。");
+  if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
+  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門報告`,question?`問事：${question}`:"",`結論：${summary.short}`,`大師斷語：${summary.total}`,`今天怎麼做：${summary.action}`,`先避開：${summary.avoid}`,`補運方法：${summary.fengshui}`].filter(Boolean).join("\n\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`大師斷語：${summary.total}`); out.push(`今天怎麼做：${summary.action}`); out.push(`先避開：${summary.avoid}`); out.push(`補運方法：${summary.fengshui}`); out.push(""); out.push(`提醒：`); s.reasons.forEach(r=>out.push(`- ${r.text}`));}
+  else out.push("\n尚未選 1-9 鎖宮。");
   return out.join("\n")
 }
 
@@ -466,7 +466,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=copy-bank-11").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=ink-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -719,7 +719,7 @@ function taixuBullet(items){
 }
 function taixuReportIntro(mode){
   if(mode==="simple")return "不說廢話，先看結論：這份報告不把吉凶講死，只看哪裡可用、哪裡受阻，以及今天怎麼把風險降級。";
-  return "大家好，我是太虛，不說廢話，正式開始。奇門不是用來製造恐懼，而是把盤面拆成可觀察、可驗證、可調整的系統：先看平衡有沒有失衡，流通有沒有受阻，再把風險降級。";
+  return "不說廢話，正式開始。奇門不是用來製造恐懼，而是把盤面拆成可觀察、可驗證、可調整的系統：先看平衡有沒有失衡，流通有沒有受阻，再把風險降級。";
 }
 function generateSoulReport(sourceChart, selectedPalace, qtype){
   const p=selectedPalace; const s=scorePalace(p,qtype); const bank=copyBank(); const evidence=buildCopyBankEvidence(sourceChart,p,qtype,s);
@@ -836,7 +836,7 @@ function teacherLayerArticle(report,p,qtype){
   ].join("\n\n");
 }
 function formatNinePartReport(report,question,mode="detail"){
-  const title="九宮奇門鎖單宮詳細報告";
+  const title="詳細報告";
   return [
     title,
     taixuReportIntro("detail"),
@@ -854,7 +854,7 @@ function formatNinePartReport(report,question,mode="detail"){
 }
 function formatSimpleReport(report,question){
   return [
-    "太虛快讀版",
+    "簡略報告",
     taixuReportIntro("simple"),
     question?`問事：${question}`:"",
     `結論\n${report.headline}`,
@@ -871,7 +871,7 @@ function formatDetailReport(report,question,m){return formatNinePartReport(repor
 function formatTeacherReport(report,question,m,p){
   const stems=`天盤干：${p.top.join("、")||"無"}；地盤干：${p.bottom.join("、")||"無"}`;
   return [
-    "太虛老師拆盤版",
+    "老師教學",
     taixuReportIntro("teacher"),
     question?`問事：${question}`:"",
     `起盤資料\n${m.solar}｜${m.yearGZ}年 ${m.monthGZ}月 ${m.dayGZ}日 ${m.hourGZ}時｜${m.ju}｜空亡${m.kongwang}｜驛馬${m.yima}`,
@@ -888,7 +888,7 @@ function formatTeacherReport(report,question,m,p){
 }
 function makeReport(mode=reportMode){
   if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText();
-  if(!selectedNum)return [`九宮奇門鎖單宮報告`,question?`問事：${question}`:"",`時間：${m.solar}`,`尚未選 1-9 鎖單宮。`].filter(Boolean).join("\n");
+  if(!selectedNum)return [`九宮奇門報告`,question?`問事：${question}`:"",`時間：${m.solar}`,`尚未選 1-9 鎖宮。`].filter(Boolean).join("\n");
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   if(mode==="simple")return formatSimpleReport(report,question);
   if(mode==="teacher")return formatTeacherReport(report,question,m,p);
@@ -979,7 +979,7 @@ function init(){
   document.getElementById("resetInquiryChart").onclick=resetInquiry;
   document.getElementById("printBtn").onclick=()=>window.print();
   document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").textContent=text; toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
-  document.getElementById("downloadTxt").onclick=()=>download("九宮奇門鎖單宮報告.txt",makeReport());
+  document.getElementById("downloadTxt").onclick=()=>download("九宮奇門報告.txt",makeReport());
   document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify(chartPayload(),null,2),"application/json;charset=utf-8");
   document.getElementById("importJsonBtn").onclick=()=>document.getElementById("importJsonInput").click();
   document.getElementById("importJsonInput").onchange=e=>{importJsonFile(e.target.files[0]); e.target.value=""};

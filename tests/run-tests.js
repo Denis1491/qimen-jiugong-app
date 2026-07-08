@@ -25,16 +25,23 @@ assert(html.includes("qimen_soul_copy_bank.js"), "index.html must load the soul 
 assert(html.includes("manifest.webmanifest"), "index.html must load the manifest");
 assert(html.includes("caseList"), "case library UI is missing");
 assert(html.includes("metricRules"), "rule version display is missing");
+assert(html.includes("九宮奇門"), "app name should be 九宮奇門");
+assert(html.includes("簡略報告"), "simple report button is missing");
+assert(html.includes("詳細報告"), "detail report button is missing");
+assert(html.includes("老師教學"), "teacher report button is missing");
+assert(html.includes("info-fold"), "collapsible information sections are missing");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
+assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
 assert(app.includes("CASE_STORAGE_KEY"), "case storage logic is missing");
 assert(app.includes("importJsonFile"), "JSON import logic is missing");
 assert(app.includes("registerServiceWorker"), "service worker registration is missing");
 assert(app.includes("RULE_VERSION"), "rule version constant is missing");
 assert(app.includes("generateSoulReport"), "copy-bank report generator is missing");
-assert(app.includes("太虛快讀版"), "simple report article is missing");
-assert(app.includes("九宮奇門鎖單宮詳細報告"), "detail report article is missing");
-assert(app.includes("太虛老師拆盤版"), "teacher report article is missing");
+assert(app.includes("簡略報告"), "simple report article is missing");
+assert(app.includes("詳細報告"), "detail report article is missing");
+assert(app.includes("老師教學"), "teacher report article is missing");
+assert(!app.includes("大家好，我是太虛"), "report should not mention 太虛 as a persona");
 assert(copyBank.includes("window.QIMEN_COPY_BANK"), "copy bank must expose window.QIMEN_COPY_BANK");
 assert(engine.includes("QIMEN_RULE_VERSION"), "engine.js must expose rule version");
 assert(engine.includes("QIMEN_RULE_FILES"), "engine.js must expose rule file index");
@@ -46,5 +53,6 @@ assert(scoring.score.door["開門"] === 40, "score rule for 開門 changed unexp
 assert(qtype.status === "待確認", "qtype rules must remain marked pending confirmation");
 assert(index.files.includes("scoring.json"), "rules index must include scoring.json");
 assert(manifest.display === "standalone", "manifest display should be standalone");
+assert(manifest.name === "九宮奇門", "manifest app name should be 九宮奇門");
 
 console.log("V4.3 static checks passed.");
