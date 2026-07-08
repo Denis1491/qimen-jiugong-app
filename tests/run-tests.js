@@ -35,6 +35,9 @@ assert(html.includes("老師教學"), "teacher report button is missing");
 assert(html.includes("selectionMode"), "selection mode control is missing");
 assert(html.includes("comparePanel"), "compare mode panel is missing");
 assert(html.includes("questionDiagnosis"), "question diagnosis panel is missing");
+assert(html.includes("先問清楚，再看盤。"), "V5.1 advisor-style hero copy is missing");
+assert(html.includes("applyAppAdvice"), "V5.1 primary app advice CTA is missing");
+assert(html.includes("qimen-user-mode-v5") || app.includes("qimen-user-mode-v5"), "V5.1 user mode storage key is missing");
 assert(html.includes("applyDiagnosisQtype"), "apply diagnosis qtype button is missing");
 assert(html.includes("applyQuestionRewrite"), "apply question rewrite button is missing");
 assert(html.includes("applyDecisionOptions"), "apply decision option drafts button is missing");
@@ -59,9 +62,12 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("exportFilteredCasesCsv"), "filtered case review CSV export button is missing");
 assert(html.includes("qimen_v5_100_synthetic_cases.json"), "synthetic 100-case download is missing");
+assert(html.includes("decisionBrief"), "V5.1 decision brief card container is missing");
+assert(html.includes("actionChecklist"), "V5.1 action checklist container is missing");
+assert(html.includes("caseCoachHint"), "V5.1 case coach hint is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-30"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.1-ux-1"), "cache-busting version should be updated for V5.1 UX build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -83,6 +89,8 @@ assert(app.includes("decisionCards"), "case records should store decision cards"
 assert(app.includes("scorePalaceV5"), "V5 scoring function is missing");
 assert(app.includes("diagnoseQuestion"), "question diagnosis function is missing");
 assert(app.includes("buildQuestionRewrite"), "question rewrite helper is missing");
+assert(app.includes("applyAppAdvice"), "V5.1 app advice helper is missing");
+assert(app.includes("shouldSuggestCompare"), "V5.1 compare suitability helper is missing");
 assert(app.includes("applyQuestionRewrite"), "question rewrite apply handler is missing");
 assert(app.includes("suggestDecisionOptions"), "decision option draft helper is missing");
 assert(app.includes("applyDecisionOptionDrafts"), "decision option draft apply handler is missing");
@@ -114,7 +122,15 @@ assert(app.includes("caseTrainingTaskHTML"), "case training task renderer is mis
 assert(app.includes("caseCompletion"), "case completion helper is missing");
 assert(app.includes("caseMatchesReviewFilter"), "case review filter helper is missing");
 assert(app.includes("caseReviewPriority"), "case review priority helper is missing");
+assert(app.includes("caseReviewPriorityLevel"), "V5.1 case review priority level helper is missing");
+assert(app.includes("highlightMissingCaseFields"), "V5.1 missing case field highlighter is missing");
 assert(app.includes("sortCasesForReview"), "case review priority sort helper is missing");
+assert(app.includes("USER_MODE_KEY"), "V5.1 user mode helper is missing");
+assert(app.includes("ACTION_CHECKLIST_KEY"), "V5.1 action checklist storage key is missing");
+assert(app.includes("briefFromReport"), "V5.1 single decision brief builder is missing");
+assert(app.includes("briefFromCompare"), "V5.1 compare decision brief builder is missing");
+assert(app.includes("copyBriefAdvice"), "V5.1 brief copy helper is missing");
+assert(app.includes("currentChecklistItems"), "V5.1 checklist state helper is missing");
 assert(app.includes("buildCaseReviewChecklist"), "case review checklist builder is missing");
 assert(app.includes("copyActiveCaseReviewChecklist"), "case review checklist copy handler is missing");
 assert(app.includes("buildFilteredCaseReviewChecklist"), "filtered case review checklist builder is missing");
@@ -163,12 +179,16 @@ assert(style.includes(".case-stats"), "case stats styles are missing");
 assert(style.includes(".case-progress"), "100-case progress styles are missing");
 assert(style.includes(".case-next-task"), "case next task styles are missing");
 assert(style.includes(".case-completion"), "case completion styles are missing");
+assert(style.includes(".decision-brief"), "V5.1 decision brief styles are missing");
+assert(style.includes(".action-checklist"), "V5.1 action checklist styles are missing");
+assert(style.includes(".case-review-bar"), "V5.1 case review coach styles are missing");
 assert(copyBank.includes("window.QIMEN_COPY_BANK"), "copy bank must expose window.QIMEN_COPY_BANK");
 assert(engine.includes("QIMEN_RULE_VERSION"), "engine.js must expose rule version");
 assert(engine.includes("QIMEN_RULE_FILES"), "engine.js must expose rule file index");
-assert(sw.includes("qimen-jiugong-v5-0-decision-30"), "service worker cache name should be updated");
-assert(sw.includes("app.js?v=5.0-decision-30"), "service worker app asset version should be updated");
-assert(sw.includes("sample-data/qimen_v5_100_synthetic_cases.json?v=5.0-decision-30"), "service worker should cache synthetic case sample data");
+assert(engine.includes('app: "5.1"'), "engine app version should be V5.1");
+assert(sw.includes("qimen-jiugong-v5-1-ux-1"), "service worker cache name should be updated");
+assert(sw.includes("app.js?v=5.1-ux-1"), "service worker app asset version should be updated");
+assert(sw.includes("sample-data/qimen_v5_100_synthetic_cases.json?v=5.1-ux-1"), "service worker should cache synthetic case sample data");
 
 assert(lock.version === "lock-palace.v5.0", "lock rule version mismatch");
 assert(lock.mapping["5"] === 2, "lock mapping for 5 should remain internal 2");
@@ -190,4 +210,4 @@ assert(syntheticCases.cases.some(c => !c.feedback || !c.feedback.accuracy), "syn
 assert(syntheticCases.cases.some(c => Number(c.feedback?.accuracy) <= 2), "synthetic cases should include low-accuracy examples");
 assert(syntheticCases.cases.some(c => c.feedback?.compareHit === "mixed" || c.feedback?.compareHit === "none"), "synthetic cases should include compare mismatch examples");
 
-console.log("V5.0 static checks passed.");
+console.log("V5.1 static checks passed.");
