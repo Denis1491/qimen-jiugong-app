@@ -51,7 +51,7 @@ assert(html.includes("copyCaseCalibrationSummary"), "case calibration summary co
 assert(html.includes("exportCasesCsv"), "case review CSV export button is missing");
 assert(html.includes("caseStats"), "case calibration stats panel is missing");
 assert(html.includes("info-fold"), "collapsible information sections are missing");
-assert(html.includes("?v=5.0-decision-24"), "cache-busting version should be updated for V5.0 decision build");
+assert(html.includes("?v=5.0-decision-25"), "cache-busting version should be updated for V5.0 decision build");
 assert(!html.includes("5 改取 2"), "user-facing 5-to-2 wording should stay hidden");
 assert(!html.includes("太虛"), "app UI should not mention 太虛");
 
@@ -89,6 +89,8 @@ assert(app.includes("riskReduced"), "case risk reduction feedback is missing");
 assert(app.includes("compareChosen"), "case compare chosen feedback is missing");
 assert(app.includes("compareHit"), "case compare hit feedback is missing");
 assert(app.includes("compareOptionLabel"), "case compare option label helper is missing");
+assert(app.includes("compareMatchLabel"), "case compare match label helper is missing");
+assert(app.includes("compareHitMatchRate"), "case compare recommendation hit-rate is missing");
 assert(app.includes("deviationResult"), "case deviation result feedback is missing");
 assert(app.includes("calibration"), "case calibration feedback is missing");
 assert(app.includes("riskReducedLabel"), "risk reduction label helper is missing");
@@ -121,6 +123,7 @@ assert(app.includes("testCalibrationReadiness"), "calibration readiness dev test
 assert(app.includes("testMilestoneUsesFeedbackCount"), "feedback-based milestone dev test is missing");
 assert(app.includes("testCaseCompletionMissingFields"), "case completion dev test is missing");
 assert(app.includes("testCompareCaseCompletionFields"), "compare case completion dev test is missing");
+assert(app.includes("testCompareRecommendationMatchStats"), "compare recommendation match dev test is missing");
 assert(app.includes("testCaseReviewFilter"), "case review filter dev test is missing");
 assert(app.includes("testCaseReviewChecklist"), "case review checklist dev test is missing");
 assert(app.includes("testCaseReviewCsv"), "case review CSV dev test is missing");

@@ -688,7 +688,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-24").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-25").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1733,6 +1733,13 @@ function riskReducedLabel(value){
 function compareOptionLabel(value){
   return {A:"選項 A",B:"選項 B",C:"選項 C",D:"選項 D",none:"沒有採用/都未應驗",mixed:"混合應驗",unclear:"看不出來/仍待觀察"}[value]||"未回填";
 }
+function compareMatchLabel(winner,value,type){
+  if(!winner||!value)return "未回填";
+  if(["unclear"].includes(value))return "仍待觀察";
+  if(value==="mixed")return "混合應驗";
+  if(value==="none")return type==="chosen"?"未採用任何選項":"都未應驗";
+  return value===winner?"推薦命中":"推薦未命中";
+}
 function calibrationLabel(value){
   return {accurate:"判斷準",delayed:"只是延遲","wrong-area":"應事不同","too-strong":"說得太死",downgrade:"需改成風險降級",unclear:"仍待觀察"}[value]||"未回填";
 }
@@ -1753,7 +1760,7 @@ function calibrationReadinessLabel(stats){
   return "先補完整";
 }
 function caseStatsFromCases(cases){
-  const stats={total:cases.length,feedbackCount:0,completeCount:0,incompleteReviewedCount:0,readinessPercent:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,compareCaseCount:0,compareChosenCount:0,compareHitCount:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),byCompareChosen:new Map(),byCompareHit:new Map(),highTrace:new Map(),lowTrace:new Map()};
+  const stats={total:cases.length,feedbackCount:0,completeCount:0,incompleteReviewedCount:0,readinessPercent:0,accuracyCount:0,accuracySum:0,actionCount:0,actionEffectCount:0,deviationCount:0,calibrationCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,symbolHitPairCount:0,compareCaseCount:0,compareChosenCount:0,compareHitCount:0,compareChosenMatchCount:0,compareHitMatchCount:0,compareChosenMatchRate:null,compareHitMatchRate:null,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),byCalibration:new Map(),bySymbolHitArea:new Map(),byActionEffect:new Map(),byCompareChosen:new Map(),byCompareHit:new Map(),byCompareChosenMatch:new Map(),byCompareHitMatch:new Map(),highTrace:new Map(),lowTrace:new Map()};
   cases.forEach(c=>{
     const completion=caseCompletion(c);
     const accuracy=caseAccuracyValue(c);
@@ -1766,13 +1773,24 @@ function caseStatsFromCases(cases){
     const compareChosen=c?.feedback?.compareChosen||c?.compareChosen||"";
     const compareHit=c?.feedback?.compareHit||c?.compareHit||"";
     const isCompare=Boolean(c?.decisionOptions||c?.compare);
+    const compareWinner=c?.compare?.winner||"";
     const hasFeedback=Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||accuracy!==null||Boolean(hitArea)||Boolean(verifiedSymbol)||Boolean(riskReduced)||Boolean(deviationResult)||Boolean(calibration)||Boolean(compareChosen)||Boolean(compareHit);
     if(hasFeedback)stats.feedbackCount+=1;
     if(completion.done===completion.total)stats.completeCount+=1;
     else if(hasFeedback)stats.incompleteReviewedCount+=1;
     if(isCompare)stats.compareCaseCount+=1;
-    if(compareChosen){stats.compareChosenCount+=1; incrementBucket(stats.byCompareChosen,compareOptionLabel(compareChosen),accuracy);}
-    if(compareHit){stats.compareHitCount+=1; incrementBucket(stats.byCompareHit,compareOptionLabel(compareHit),accuracy);}
+    if(compareChosen){
+      stats.compareChosenCount+=1;
+      if(compareWinner&&compareChosen===compareWinner)stats.compareChosenMatchCount+=1;
+      incrementBucket(stats.byCompareChosen,compareOptionLabel(compareChosen),accuracy);
+      incrementBucket(stats.byCompareChosenMatch,compareMatchLabel(compareWinner,compareChosen,"chosen"),accuracy);
+    }
+    if(compareHit){
+      stats.compareHitCount+=1;
+      if(compareWinner&&compareHit===compareWinner)stats.compareHitMatchCount+=1;
+      incrementBucket(stats.byCompareHit,compareOptionLabel(compareHit),accuracy);
+      incrementBucket(stats.byCompareHitMatch,compareMatchLabel(compareWinner,compareHit,"hit"),accuracy);
+    }
     if(afterAction)stats.actionCount+=1;
     if(deviationResult)stats.deviationCount+=1;
     if(calibration){stats.calibrationCount+=1; incrementBucket(stats.byCalibration,calibrationLabel(calibration),accuracy);}
@@ -1793,6 +1811,8 @@ function caseStatsFromCases(cases){
   stats.averageAccuracy=stats.accuracyCount?stats.accuracySum/stats.accuracyCount:null;
   stats.readinessPercent=stats.feedbackCount?Math.round(stats.completeCount/stats.feedbackCount*100):0;
   stats.readinessLabel=calibrationReadinessLabel(stats);
+  stats.compareChosenMatchRate=stats.compareChosenCount?Math.round(stats.compareChosenMatchCount/stats.compareChosenCount*100):null;
+  stats.compareHitMatchRate=stats.compareHitCount?Math.round(stats.compareHitMatchCount/stats.compareHitCount*100):null;
   stats.milestone=caseMilestone(stats.feedbackCount,stats.total);
   return stats;
 }
@@ -1811,6 +1831,7 @@ function calibrationHints(stats){
   if(stats.riskReducedCount>0)hints.push(`已有 ${stats.riskReducedCount} 筆風險降級回饋，這會比單看吉凶更接近決策輔助。`);
   if(stats.deviationCount>0)hints.push(`已有 ${stats.deviationCount} 筆記錄偏離建議後結果，可分辨「沒照做」和「判斷本身需修正」。`);
   if(stats.calibrationCount>0)hints.push(`已有 ${stats.calibrationCount} 筆校準結論，能追蹤哪些地方要從吉凶改成風險降級。`);
+  if(stats.compareHitCount>0)hints.push(`比較題已有 ${stats.compareHitCount} 筆填了實際應驗，推薦應驗率 ${stats.compareHitMatchRate}%；樣本少時只看趨勢，不急著改規則。`);
   if(!hints.length)hints.push("目前回驗走向穩定，但仍建議累積到 30 筆以上再調整權重。");
   return hints;
 }
@@ -1899,6 +1920,8 @@ function renderCaseStats(allCases=loadCases()){
   }
   const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
   const riskRate=stats.riskReducedCount?`${Math.round(stats.riskReducedPositive/stats.riskReducedCount*100)}%`:"待回填";
+  const chosenMatchRate=stats.compareChosenMatchRate===null?"待回填":`${stats.compareChosenMatchRate}%`;
+  const hitMatchRate=stats.compareHitMatchRate===null?"待回填":`${stats.compareHitMatchRate}%`;
   const topHigh=rankedBuckets(stats.highTrace,3).map(x=>x.name).join("、")||"待累積";
   const topLow=rankedBuckets(stats.lowTrace,3).map(x=>x.name).join("、")||"待累積";
   const milestone=stats.milestone;
@@ -1917,6 +1940,8 @@ function renderCaseStats(allCases=loadCases()){
     <div><span>風險降低</span><strong>${escapeHTML(riskRate)}</strong></div>
     <div><span>校準狀態</span><strong>${escapeHTML(stats.readinessLabel)}</strong></div>
     <div><span>待補完整</span><strong>${stats.incompleteReviewedCount}</strong></div>
+    <div><span>推薦採用</span><strong>${escapeHTML(chosenMatchRate)}</strong></div>
+    <div><span>推薦應驗</span><strong>${escapeHTML(hitMatchRate)}</strong></div>
   </div>
   <div class="case-stats-lines">
     <p><strong>題型分布</strong>${renderBucketList(rankedBuckets(stats.byQtype,5))}</p>
@@ -1927,6 +1952,8 @@ function renderCaseStats(allCases=loadCases()){
     <p><strong>行動成效</strong>${renderBucketList(rankedBuckets(stats.byActionEffect,5))}</p>
     <p><strong>比較採用</strong>${renderBucketList(rankedBuckets(stats.byCompareChosen,5))}</p>
     <p><strong>比較應驗</strong>${renderBucketList(rankedBuckets(stats.byCompareHit,5))}</p>
+    <p><strong>採用命中</strong>${renderBucketList(rankedBuckets(stats.byCompareChosenMatch,5))}</p>
+    <p><strong>應驗命中</strong>${renderBucketList(rankedBuckets(stats.byCompareHitMatch,5))}</p>
     <p><strong>校準結論</strong>${renderBucketList(rankedBuckets(stats.byCalibration,5))}</p>
     <p><strong>高分常見依據</strong><span>${escapeHTML(topHigh)}</span></p>
     <p><strong>低分待查依據</strong><span>${escapeHTML(topLow)}</span></p>
@@ -1939,6 +1966,8 @@ function buildCaseCalibrationSummary(cases=loadCases()){
   const task=caseTrainingTask(cases,stats);
   const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
   const riskRate=stats.riskReducedCount?`${Math.round(stats.riskReducedPositive/stats.riskReducedCount*100)}%`:"待回填";
+  const chosenMatchRate=stats.compareChosenMatchRate===null?"待回填":`${stats.compareChosenMatchRate}%`;
+  const hitMatchRate=stats.compareHitMatchRate===null?"待回填":`${stats.compareHitMatchRate}%`;
   return [
     "九宮奇門 V5.0｜案例校準摘要",
     `產生時間：${new Date().toLocaleString("zh-TW")}`,
@@ -1969,7 +1998,16 @@ function buildCaseCalibrationSummary(cases=loadCases()){
     `比較案例：${stats.compareCaseCount}`,
     `已填採用選項：${stats.compareChosenCount}`,
     `已填應驗選項：${stats.compareHitCount}`,
+    `推薦採用率：${chosenMatchRate}`,
+    `推薦應驗率：${hitMatchRate}`,
+    "採用分布：",
+    bucketSummary(stats.byCompareChosen,5),
+    "採用命中：",
+    bucketSummary(stats.byCompareChosenMatch,5),
+    "應驗分布：",
     bucketSummary(stats.byCompareHit,5),
+    "應驗命中：",
+    bucketSummary(stats.byCompareHitMatch,5),
     "",
     "六、回驗提醒",
     calibrationHints(stats).map(h=>`- ${h}`).join("\n"),
@@ -2163,6 +2201,15 @@ function testCompareCaseCompletionFields(){
   console.assert(ok,"V5: compare case completion should require chosen option, hit option and compare note.");
   return ok;
 }
+function testCompareRecommendationMatchStats(){
+  const stats=caseStatsFromCases([
+    {compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{accuracy:"4",compareChosen:"B",compareHit:"B"}},
+    {compare:{winner:"B"},decisionOptions:[{side:"A"},{side:"B"}],feedback:{accuracy:"2",compareChosen:"A",compareHit:"mixed"}}
+  ]);
+  const ok=stats.compareChosenCount===2&&stats.compareHitCount===2&&stats.compareChosenMatchCount===1&&stats.compareHitMatchCount===1&&stats.compareChosenMatchRate===50&&stats.compareHitMatchRate===50&&stats.byCompareChosenMatch.get("推薦命中")?.count===1&&stats.byCompareHitMatch.get("混合應驗")?.count===1;
+  console.assert(ok,"V5: compare recommendation match stats should track chosen and hit match rates.");
+  return ok;
+}
 function testCaseReviewFilter(){
   const blank={title:"未回驗"};
   const partial={outcome:"有結果",feedback:{accuracy:"4"}};
@@ -2249,6 +2296,7 @@ function runV5DevTests(){
   testMilestoneUsesFeedbackCount();
   testCaseCompletionMissingFields();
   testCompareCaseCompletionFields();
+  testCompareRecommendationMatchStats();
   testCaseReviewFilter();
   testCaseReviewChecklist();
   testCaseReviewCsv();
