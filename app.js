@@ -201,16 +201,16 @@ function scorePalaceRaw(p,qtype){
   let score=0; const reasons=[]; const deniers=[];
   function deny(type,sym,text){if(sym&&DIRECT_DENY[type]&&DIRECT_DENY[type].has(sym)){deniers.push({label:denyReason(type,sym),value:0,text})}}
   function add(type,label,sym,text){const value=contribution(type,sym); if(value>0){score+=value; reasons.push({label,value,text})}}
-  deny("god",p.god,`${p.god}：PDF 規則列為綠色大凶，直接否定。`);
-  deny("star",p.star,`${p.star}：PDF 規則列為綠色大凶，直接否定。`);
-  deny("door",p.door,`${p.door}：PDF 規則列為綠色大凶，直接否定。`);
-  p.top.concat(p.bottom).forEach(st=>deny("stem",st,`${st}：PDF 規則列為綠色大凶天干，直接否定。`));
+  deny("god",p.god,`${p.god}：今天這股氣比較硬，容易起衝突，不適合硬推。`);
+  deny("star",p.star,`${p.star}：事情暗藏麻煩，先查清楚再說。`);
+  deny("door",p.door,`${p.door}：這件事現在像卡住或收尾，不適合開新局。`);
+  p.top.concat(p.bottom).forEach(st=>deny("stem",st,`${st}：遇到阻力與壓力，先不要重押。`));
   p.flags.forEach(f=>deny("flag",f,flagText(f)));
   if(deniers.length)return {score:0,reasons:deniers,denied:true,deniers,grade:{name:"直接否定",cls:"score-bad"}};
-  add("god",p.god,p.god,`${p.god}：紅色吉神，有神助或人事助力。`);
-  add("star",p.star,p.star,`${p.star}：紅色吉星，事情有發展性。`);
-  add("door",p.door,p.door,`${p.door}：紅色吉門，門路、方法或行動方式可用。`);
-  p.top.concat(p.bottom).forEach(st=>add("stem",st,st,`${st}：紅色吉干，主機會、光明、轉機或財氣。`));
+  add("god",p.god,p.god,`${p.god}：有人事助力，可以借力使力。`);
+  add("star",p.star,p.star,`${p.star}：事情有可用的條件，值得整理後推進。`);
+  add("door",p.door,p.door,`${p.door}：路徑打得開，可以採取行動。`);
+  p.top.concat(p.bottom).forEach(st=>add("stem",st,st,`${st}：有機會、有資源，適合把條件談清楚。`));
   score=clamp(Math.round(score),0,100); return {score,reasons,denied:false,deniers:[],grade:grade(score)};
 }
 function grade(score){if(score>=80)return {name:"大吉",cls:"score-good"}; if(score>=60)return {name:"主吉",cls:"score-good"}; if(score>0)return {name:"未達 60",cls:"score-bad"}; return {name:"不採用",cls:"score-bad"}}
@@ -296,26 +296,39 @@ function renderResult(){
   document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${s.grade.name}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
   document.getElementById("reasonTabs").innerHTML=[`<span class="tab active">${p.key}${p.number}</span>`,`<span class="tab">${chart.settings.qtype}</span>`,`<span class="tab">${chart.meta.ju}</span>`].join("");
   const summary = makeSummary(p,s);
-  document.getElementById("resultHeadline").textContent=`鎖 ${selectedNum}｜${p.key}宮｜${s.denied?"直接否定":s.score+"分 "+s.grade.name}｜${s.denied?"先暫停":"看建議行動"}`;
-  const reasonHtml=s.reasons.slice(0,9).map(r=>`<div class="item"><strong>${escapeHTML(r.label)} ${r.value>0?"+":""}${r.value}</strong>${escapeHTML(r.text)}</div>`).join("");
-  document.getElementById("resultList").innerHTML=`<div class="item"><strong>總斷</strong>${escapeHTML(summary.total)}</div><div class="item action"><strong>行動建議</strong>${escapeHTML(summary.action)}</div><div class="item action"><strong>風水改善</strong>${escapeHTML(summary.fengshui)}</div><div class="item"><strong>判斷依據</strong>${s.denied?"觸發直接否定條件。":"依吉象加分，未列入新的用途權重。"}</div>${reasonHtml}`;
+  document.getElementById("resultHeadline").textContent=`${s.denied?"先停一下":s.score>=60?"可以推進":"先保守"}｜${p.key}宮｜${summary.short}`;
+  document.getElementById("resultList").innerHTML=`<div class="item"><strong>大師斷語</strong>${escapeHTML(summary.total)}</div><div class="item action"><strong>今天怎麼做</strong>${escapeHTML(summary.action)}</div><div class="item action"><strong>先避開</strong>${escapeHTML(summary.avoid)}</div><div class="item action"><strong>補運方法</strong>${escapeHTML(summary.fengshui)}</div>`;
 }
 function makeSummary(p,s){
-  const dir=PALACE_DIR[p.key]; if(s.denied){const hit=s.deniers.map(x=>x.label.split("：").pop()).join("、"); return {total:`鎖 ${selectedNum} 入 ${p.key}宮，見 ${hit}，依直接否定法判為不宜採用。`, action:"先暫停，不硬推。若是重要決策，換時間再問，或先排除風險、確認資訊後再行動。", fengshui:`${dir}今日宜靜不宜動：保持乾淨、避免敲打修繕、避免在此方爭吵或做大額決定。`}}
-  const good=s.score>=60, bad=s.score<60;
-  let total=good?`鎖 ${selectedNum} 入 ${p.key}宮，${dir}可用，紅色吉符號合計 ${s.score} 分，達 60 分以上，主吉。`:`鎖 ${selectedNum} 入 ${p.key}宮，${dir}紅色吉符號合計 ${s.score} 分，未達 60 分，主凶或成功率不足。`;
-  let action=`${DOOR_ADVICE[p.door]||"先看門星神與空墓刑迫。"} ${GOD_ADVICE[p.god]||""}`;
-  if(p.flags.includes("空")) action += " 此宮逢空，承諾與消息要等白紙黑字，不宜一次押重。";
-  if(p.flags.includes("迫")||p.flags.includes("刑")) action += " 有迫或刑，說話、簽約、開車與金錢動作都要慢。";
-  if(p.flags.includes("馬")) action += " 有驛馬，可用於出門、移動、轉換，但要先確認路線與時間。";
-  let fengshui = good ? `${dir}今日可輕度啟動：整理乾淨、開燈 15-30 分鐘、放正在使用的文件或計畫；若談合作財務，可面向此方發訊息。` : `${dir}今日宜靜不宜動：收雜物、關櫃門、移開尖銳物，不在此方爭吵、敲打、修繕或做大額決定。`;
+  const dir=PALACE_DIR[p.key]; const topic=chart?.settings?.qtype||"這件事"; const topicLine=qtypeAdvice(topic);
+  if(s.denied){return {short:"不宜硬推", total:"這件事現在不順，先不要急著定案。不是完全沒機會，而是眼前阻力比較重，越急越容易做錯。", action:`先停、先查、先問清楚。今天適合把資料補齊、把風險列出來、等對方明確回覆；重要決定不要當場答應。${topicLine}`, avoid:"避免催促、爭辯、簽急件、付大錢、承諾做不到的事。若對方一直模糊，就先保留。", fengshui:`${dir}今天先安靜處理：整理乾淨、不要敲打修繕、不要在這個方位吵架或談重大決定。把雜物收起來，就是補運。`}}
+  const good=s.score>=60;
+  let total=good?`這件事可以推進，但要用穩的方式做。先抓一個小步驟開始，不要一次押太大。`:`這件事目前力道不足，先當作觀察局。可以準備，但不適合把所有籌碼都放進去。`;
+  let action=good?`${DOOR_ADVICE[p.door]||"先用最容易成功的小步驟切入。"} ${GOD_ADVICE[p.god]||""} ${topicLine}`:`先整理條件，等訊號更清楚再行動。可以先試水溫、問細節、做備案，不要急著拍板。${topicLine}`;
+  let avoid=good?"不要貪快、不要一次講太滿。能簽字的先寫清楚，能留紀錄的不要只靠口頭。":"避免重押、避免借錢或先墊、避免為了面子硬撐。今天重點是守住基本盤。";
+  if(p.flags.includes("空")) { action += " 承諾要等白紙黑字，不要只聽口頭。"; avoid += " 空口承諾先不要信滿。"; }
+  if(p.flags.includes("迫")||p.flags.includes("刑")) { action += " 說話放慢，條件一條一條確認。"; avoid += " 不要硬碰硬，也不要帶情緒回覆。"; }
+  if(p.flags.includes("馬")) action += " 若需要移動、拜訪、換方向，可以動，但行程要先排好。";
+  let fengshui = good ? `${dir}可以輕度啟動：整理乾淨、開燈 15-30 分鐘，把正在推進的文件或計畫放整齊；發訊息或談事情前，先讓這個方位明亮乾淨。` : `${dir}今天先收斂：收雜物、關櫃門、移開尖銳物，不在這個方位爭吵、敲打或做大額決定。`;
   const elem=PALACE_ELEM[p.key]; if(good){ if(elem==="木")fengshui += " 可放健康綠植或木質物。"; if(elem==="火")fengshui += " 可用溫和燈光，不用強光。"; if(elem==="土")fengshui += " 可放陶瓷、石材或穩重物件。"; if(elem==="金")fengshui += " 可用白色、金屬或圓形物件。"; if(elem==="水")fengshui += " 可放一杯乾淨清水，但不可髒水或漏水。"}
-  return {total,action,fengshui}
+  return {short:good?"小步可行":"先觀望",total,action,avoid,fengshui}
+}
+function qtypeAdvice(topic){
+  return {
+    "工作":"工作上先把責任、時間、交付內容寫清楚，少講感覺，多講結果。",
+    "財運":"錢的事情先保守，能收就先收，該省就先省，不做看不懂的投資。",
+    "感情":"感情上先穩住情緒，不逼問、不冷戰，重點是把話講清楚。",
+    "合作":"合作要先談邊界、分工與退出方式，合約比口頭承諾重要。",
+    "健康":"健康問題以休息和就醫為先，這裡只看提醒，不取代專業醫療。",
+    "風水":"風水先從乾淨、明亮、安靜開始，不用做誇張擺設。",
+    "決策":"決策先做最小可逆的一步，保留退路，不要一次賭到底。",
+    "今日運勢":"今天先抓一件最重要的事處理，其餘不要分心。"
+  }[topic]||"先小步試，不要一次賭到底。"
 }
 function renderReport(){document.getElementById("reportBox").textContent=makeReport(reportMode)}
 function makeReport(mode=reportMode){
   if(!chart)return "尚未產生報告。"; const m=chart.meta; const question=chart.question||questionText(); let out=[]; out.push(`九宮奇門鎖單宮報告`); if(question)out.push(`問事：${question}`); out.push(`時間：${m.solar}`); out.push(`農曆：${m.lunar}`); out.push(`四柱：${m.yearGZ}年　${m.monthGZ}月　${m.dayGZ}日　${m.hourGZ}時`); out.push(`起局：${m.ju}｜排盤：陰盤｜旬首：${m.xunshou}｜符頭：${m.futou}｜空亡：${m.kongwang}｜驛馬：${m.yima}`); out.push(`值符：${m.zhifu}｜值使：${m.zhishi}`); out.push(`局數：${m.juFormula}`); out.push(`全盤平均：${overallScore()}/100`);
-  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮簡明報告`,question?`問事：${question}`:"",`時間：${m.solar}`,`用途：${chart.settings.qtype}`,`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`,s.denied?`判斷：直接否定`:`分數：${s.score}/100｜${s.grade.name}`,`總斷：${summary.total}`,`行動建議：${summary.action}`,`風水改善：${summary.fengshui}`].filter(Boolean).join("\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`總斷：${summary.total}`); out.push(`行動建議：${summary.action}`); out.push(`風水改善：${summary.fengshui}`); out.push(""); out.push(s.denied?`否定依據：`:`加分依據：`); s.reasons.forEach(r=>out.push(`- ${r.label} ${r.value>0?"+":""}${r.value}：${r.text}`));}
+  if(selectedNum){const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const summary=makeSummary(p,s); if(mode==="simple"){return [`九宮奇門鎖單宮報告`,question?`問事：${question}`:"",`結論：${summary.short}`,`大師斷語：${summary.total}`,`今天怎麼做：${summary.action}`,`先避開：${summary.avoid}`,`補運方法：${summary.fengshui}`].filter(Boolean).join("\n\n")} out.push(""); out.push(`鎖定數字：${selectedNum}｜${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`); out.push(s.denied?`判斷：直接否定｜${s.grade.name}`:`運勢總分：${s.score}/100｜${s.grade.name}`); out.push(`大師斷語：${summary.total}`); out.push(`今天怎麼做：${summary.action}`); out.push(`先避開：${summary.avoid}`); out.push(`補運方法：${summary.fengshui}`); out.push(""); out.push(`提醒：`); s.reasons.forEach(r=>out.push(`- ${r.text}`));}
   else out.push("\n尚未選 1-9 鎖單宮。");
   return out.join("\n")
 }
