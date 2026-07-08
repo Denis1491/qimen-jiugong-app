@@ -641,7 +641,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.0-decision-13").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.0-decision-14").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1660,11 +1660,31 @@ function caseProgressHTML(milestone){
     <div class="case-progress-bar"><span style="width:${milestone.percent}%"></span></div>
   </div>`;
 }
+function caseTrainingTask(cases,stats=caseStatsFromCases(cases)){
+  if(!stats.total)return {title:"先建立第一筆案例",detail:"問一個具體問題、起盤、選數並儲存，讓案例庫開始有可回看的素材。",filter:"all"};
+  const annotated=cases.map(c=>({caseItem:c,completion:caseCompletion(c)}));
+  const unreviewed=annotated.find(x=>x.completion.done===0);
+  if(unreviewed)return {title:"先補實際結果",detail:"已有案例尚未回填結果。先補結果與準確度，比急著新增案例更能校準判斷。",filter:"unreviewed"};
+  const incomplete=annotated.filter(x=>x.completion.done>0&&x.completion.done<x.completion.total).sort((a,b)=>a.completion.done-b.completion.done)[0];
+  if(incomplete)return {title:"補齊回驗完整度",detail:`優先補「${incomplete.completion.missing.slice(0,3).join("、")}」，讓這筆案例能用來比較題型、應驗象與風險降級。`,filter:"incomplete"};
+  if(stats.feedbackCount<10)return {title:"累積到 10 筆回驗",detail:`目前已有 ${stats.feedbackCount} 筆回驗，先做到 10 筆，只看初步偏差，不急著改規則。`,filter:"all"};
+  if(stats.verifiedSymbolCount<stats.feedbackCount)return {title:"補哪個象應驗",detail:"有些回驗尚未標註應驗象。補上空亡、玄武、驚門等現實落點，才知道哪個象常應在哪類事件。",filter:"incomplete"};
+  if(stats.riskReducedCount<stats.feedbackCount)return {title:"補風險是否降低",detail:"有些案例尚未標註風險是否降低。這會幫你分辨 App 是在算吉凶，還是真的有幫人把事情降風險。",filter:"incomplete"};
+  if(stats.lowAccuracy>0&&stats.calibrationCount<stats.feedbackCount)return {title:"回看低分案例",detail:`已有 ${stats.lowAccuracy} 筆 2 星以下。優先判斷是問法太散、鎖宮不準、應事不同，還是文案說得太死。`,filter:"all"};
+  if(stats.feedbackCount<30)return {title:"擴到 30 筆看題型穩定度",detail:"10 筆後可以看初步偏差；30 筆後再觀察哪些題型準、哪些題型常誤判。",filter:"all"};
+  if(stats.feedbackCount<100)return {title:"穩定累積到 100 筆",detail:"現在重點是持續回驗，不用急著大改規則；每筆都補完整，100 筆後再做正式校準。",filter:"all"};
+  return {title:"整理 100 筆校準結論",detail:"100 筆回驗已完成，可以開始整理哪些象最常應驗、哪些題型最難判、哪些地方要從吉凶改成風險降級。",filter:"complete"};
+}
+function caseTrainingTaskHTML(task){
+  const action=task.filter?`<button class="case-mini" type="button" data-review-filter="${escapeHTML(task.filter)}">查看清單</button>`:"";
+  return `<div class="case-next-task"><div><strong>下一步回驗任務：${escapeHTML(task.title)}</strong><span>${escapeHTML(task.detail)}</span></div>${action}</div>`;
+}
 function renderCaseStats(allCases=loadCases()){
   const box=document.getElementById("caseStats"); if(!box)return;
   const stats=caseStatsFromCases(allCases);
+  const nextTask=caseTrainingTask(allCases,stats);
   if(!stats.total){
-    box.innerHTML=`${caseProgressHTML(stats.milestone)}<div class="case-empty">尚無回驗資料。先儲存第一筆案例，開始累積題型、準確度與行動回饋。</div>`;
+    box.innerHTML=`${caseProgressHTML(stats.milestone)}${caseTrainingTaskHTML(nextTask)}<div class="case-empty">尚無回驗資料。先儲存第一筆案例，開始累積題型、準確度與行動回饋。</div>`;
     return;
   }
   const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
@@ -1677,6 +1697,7 @@ function renderCaseStats(allCases=loadCases()){
     <div class="case-stats-score">${escapeHTML(avg)}</div>
   </div>
   ${caseProgressHTML(milestone)}
+  ${caseTrainingTaskHTML(nextTask)}
   <div class="case-stats-grid">
     <div><span>案例總數</span><strong>${stats.total}</strong></div>
     <div><span>已回填</span><strong>${stats.feedbackCount}</strong></div>
@@ -1731,6 +1752,12 @@ function handleCaseClick(event){
   if(btn.dataset.action==="load"){activeCaseId=item.id; restoreChartPayload(item.payload); fillCaseForm(item); showView("case"); toast("已載入案例，可回填結果。"); return}
   if(btn.dataset.action==="delete"){saveCases(cases.filter(c=>c.id!==id)); if(activeCaseId===id)activeCaseId=null; renderCases(); toast("案例已刪除。");}
 }
+function handleCaseStatsClick(event){
+  const btn=event.target.closest("[data-review-filter]"); if(!btn)return;
+  const filter=btn.dataset.reviewFilter||"all";
+  const select=document.getElementById("caseReviewFilter");
+  if(select){select.value=filter; renderCases(); toast("已切換回驗篩選。");}
+}
 
 // ===== 初始化 =====
 function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`}
@@ -1760,6 +1787,7 @@ function init(){
   document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
   document.getElementById("caseSearch").addEventListener("input",renderCases);
   document.getElementById("caseReviewFilter").addEventListener("change",renderCases);
+  document.getElementById("caseStats").addEventListener("click",handleCaseStatsClick);
   document.getElementById("caseList").addEventListener("click",handleCaseClick);
   document.querySelectorAll(".report-mode").forEach(btn=>btn.addEventListener("click",()=>{
     reportMode=btn.dataset.reportMode||"simple";
@@ -1867,6 +1895,15 @@ function testCaseReviewCsv(){
   console.assert(ok,"V5: review CSV should export analysis-ready case fields.");
   return ok;
 }
+function testCaseTrainingTask(){
+  const unreviewed=caseTrainingTask([{title:"未回驗"}]);
+  const partial=caseTrainingTask([{outcome:"有結果",feedback:{accuracy:"4"}}]);
+  const completeCases=Array.from({length:10},(_,i)=>({outcome:`結果${i}`,afterAction:"有照做",verifiedSymbol:"驚門",riskReduced:"yes",deviationResult:"無",calibration:"accurate",feedback:{accuracy:"4",hitArea:"工作"}}));
+  const ten=caseTrainingTask(completeCases);
+  const ok=unreviewed.filter==="unreviewed"&&partial.filter==="incomplete"&&ten.title.includes("30 筆");
+  console.assert(ok,"V5: training task should guide the next case review action.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1882,5 +1919,6 @@ function runV5DevTests(){
   testCaseReviewFilter();
   testCaseReviewChecklist();
   testCaseReviewCsv();
+  testCaseTrainingTask();
 }
 init();
