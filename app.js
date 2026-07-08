@@ -1455,14 +1455,14 @@ function rankedBuckets(map,limit=4){
 function riskReducedLabel(value){
   return {yes:"有降低",partial:"部分降低",no:"沒有降低",unknown:"看不出來"}[value]||"未回填";
 }
-function caseMilestone(total){
+function caseMilestone(reviewed,total=reviewed){
   const milestones=[10,30,100];
-  const next=milestones.find(n=>total<n)||100;
-  const done=Math.min(total,100);
+  const next=milestones.find(n=>reviewed<n)||100;
+  const done=Math.min(reviewed,100);
   const percent=Math.min(100,Math.round(done/100*100));
-  const remaining=Math.max(0,next-total);
-  const label=total>=100?"100 案例完成，可開始做正式校準":total>=30?"已過 30 筆，可觀察題型穩定度":total>=10?"已過 10 筆，可開始看初步偏差":"先累積到 10 筆，建立第一個校準樣本";
-  return {next,done,percent,remaining,label};
+  const remaining=Math.max(0,next-reviewed);
+  const label=reviewed>=100?"100 筆回驗完成，可開始做正式校準":reviewed>=30?"已過 30 筆回驗，可觀察題型穩定度":reviewed>=10?"已過 10 筆回驗，可開始看初步偏差":"先累積到 10 筆回驗，建立第一個校準樣本";
+  return {next,done,percent,remaining,label,total};
 }
 function caseStatsFromCases(cases){
   const stats={total:cases.length,feedbackCount:0,accuracyCount:0,accuracySum:0,actionCount:0,verifiedSymbolCount:0,riskReducedCount:0,riskReducedPositive:0,lowAccuracy:0,highAccuracy:0,byQtype:new Map(),byHitArea:new Map(),byVerifiedSymbol:new Map(),byRiskReduced:new Map(),highTrace:new Map(),lowTrace:new Map()};
@@ -1486,7 +1486,7 @@ function caseStatsFromCases(cases){
     }
   });
   stats.averageAccuracy=stats.accuracyCount?stats.accuracySum/stats.accuracyCount:null;
-  stats.milestone=caseMilestone(stats.total);
+  stats.milestone=caseMilestone(stats.feedbackCount,stats.total);
   return stats;
 }
 function calibrationHints(stats){
@@ -1510,7 +1510,7 @@ function renderBucketList(items){
 }
 function caseProgressHTML(milestone){
   return `<div class="case-progress">
-    <div><strong>100 案例進度</strong><span>${milestone.done}/100｜${escapeHTML(milestone.label)}</span></div>
+    <div><strong>100 回驗進度</strong><span>${milestone.done}/100｜已存 ${milestone.total} 筆｜${escapeHTML(milestone.label)}</span></div>
     <div class="case-progress-bar"><span style="width:${milestone.percent}%"></span></div>
   </div>`;
 }
@@ -1668,6 +1668,15 @@ function testCaseStatsAggregation(){
   console.assert(ok,"V5: case stats aggregation should count feedback, accuracy, actions and qtype buckets.");
   return ok;
 }
+function testMilestoneUsesFeedbackCount(){
+  const stats=caseStatsFromCases([
+    {qtype:"工作",title:"只儲存，未回驗"},
+    {qtype:"工作",outcome:"有結果",feedback:{accuracy:"4"}}
+  ]);
+  const ok=stats.total===2&&stats.feedbackCount===1&&stats.milestone.done===1&&stats.milestone.total===2&&stats.milestone.remaining===9;
+  console.assert(ok,"V5: 100-case milestone should count reviewed feedback, not saved cases.");
+  return ok;
+}
 function runV5DevTests(){
   if(!new URLSearchParams(location.search).has("devtest"))return;
   testSamePalaceDifferentQtypeChangesScore();
@@ -1677,5 +1686,6 @@ function runV5DevTests(){
   testReportContainsRequiredSections();
   testCaseSaveAndReload();
   testCaseStatsAggregation();
+  testMilestoneUsesFeedbackCount();
 }
 init();
