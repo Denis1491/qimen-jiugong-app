@@ -412,7 +412,8 @@ function symbolBox(label,type,sym){return `<div class="symbol-box"><span>${label
 function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
 
 // ===== 渲染 =====
-function renderAll(){applyUserMode(); updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases(); renderPendingReviewBanner();}
+function renderAll(){applyUserMode(); updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersionV53(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases(); renderPendingReviewBanner();}
+function renderRuleVersionV53(){const el=document.getElementById("metricRules"); if(el)el.textContent=`App V${RULE_VERSION.app}｜術法規則 V5.0 待校準`}
 function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途生效・待校準`}
 function setNote(t){document.getElementById("autoNote").textContent=t}
 function showView(view){
@@ -793,7 +794,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.2-review-share-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.3-personal-calibration-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1589,6 +1590,7 @@ function briefFromCompareV52(ctx){
 function setDecisionBrief(brief){
   window.currentDecisionBrief=brief;
   const box=document.getElementById("decisionBrief"); if(box)box.className="decision-brief", box.innerHTML=decisionBriefHTML(brief);
+  renderPersonalCalibrationReminder();
   renderShareReviewPanel(brief);
 }
 function briefAdviceText(brief=window.currentDecisionBrief){
@@ -1692,7 +1694,7 @@ function selectedReviewOption(){
 }
 function renderShareReviewPanel(brief=window.currentDecisionBrief){
   const box=document.getElementById("shareReviewPanel"); if(!box)return;
-  if(!chart||!brief){box.innerHTML=""; return;}
+  if(!chart||!brief){box.innerHTML=""; renderPersonalCalibrationReminder(null); return;}
   box.innerHTML=`<div class="share-review-head"><strong>分享與回驗</strong><span>先分享短卡，再安排今晚或明日回來校準。</span></div>
   <div class="btn-row share-actions">
     <button class="btn btn-primary" type="button" onclick="copyShareCardText()">複製文字卡</button>
@@ -1713,6 +1715,7 @@ function renderResult(){
     const ctx=buildCompareContext();
     const brief=briefFromCompareV52(ctx);
     setDecisionBrief(brief);
+    renderPersonalCalibrationReminder(ctx);
     renderActionChecklist(ensureChecklist(checklistDefaultsForCompare(ctx)));
     metricLock.textContent=ctx.choices.map(c=>`${c.side}:${c.num}`).join("｜");
     metricScore.textContent=`推薦 ${ctx.winner.side}`;
@@ -1729,6 +1732,7 @@ function renderResult(){
   const p=getPalaceByNum(selectedNum); const s=scorePalace(p,chart.settings.qtype); const report=makeSoulReport(p,s);
   const brief=briefFromReport(report,s);
   setDecisionBrief(brief);
+  renderPersonalCalibrationReminder(report);
   renderActionChecklist(ensureChecklist(checklistDefaultsForReport(report)));
   metricLock.textContent=`${selectedNum}｜${p.key}${PALACE_DIR[p.key]?"・"+PALACE_DIR[p.key]:""}`; metricScore.textContent=`${s.denied?"強烈不建議":s.score+"/100 "+s.grade.name}`;
   document.getElementById("resultSub").textContent=`${selectedNum} 號鎖 ${p.key}宮｜${PALACE_DIR[p.key]||"中央"}`; document.getElementById("scoreNum").textContent=s.denied?"×":s.score; document.getElementById("gradeText").innerHTML=`<span class="score-pill ${s.grade.cls}">${escapeHTML(report.level)}</span>`; document.getElementById("scoreBar").style.width=(s.denied?100:s.score)+"%";
@@ -2683,7 +2687,259 @@ function renderCaseStats(allCases=loadCases()){
   const box=document.getElementById("caseStats"); if(!box)return;
   const stats=caseStatsFromCases(allCases);
   const nextTask=caseTrainingTask(allCases,stats);
-  box.innerHTML=`${renderCalibrationDashboard(allCases)}${caseProgressHTML(stats.milestone)}${caseTrainingTaskHTML(nextTask)}`;
+  box.innerHTML=`${renderCalibrationMaturity(allCases)}${renderCalibrationDashboard(allCases)}${buildPersonalInsightHTML(allCases)}${caseProgressHTML(stats.milestone)}${caseTrainingTaskHTML(nextTask)}`;
+}
+function calibrationCompletenessScore(caseItem){
+  const fb=caseItem?.feedback||{};
+  const checks=[
+    Boolean((caseItem?.outcome||fb.outcome||"").trim()),
+    caseAccuracyValue(caseItem)!==null,
+    Boolean((caseItem?.hitArea||fb.hitArea||"").trim()),
+    extractVerifiedSymbols(caseItem).length>0,
+    Boolean(caseItem?.riskReduced||fb.riskReduced),
+    Boolean((caseItem?.calibrationConclusion||caseItem?.calibration||fb.calibrationConclusion||fb.calibration||"").trim())
+  ];
+  return {score:checks.filter(Boolean).length,total:checks.length,percent:Math.round(checks.filter(Boolean).length/checks.length*100)};
+}
+function isFullyReviewedCase(caseItem){
+  const score=calibrationCompletenessScore(caseItem);
+  return score.score===score.total;
+}
+function buildCalibrationMaturity(cases){
+  const fullCount=cases.filter(isFullyReviewedCase).length;
+  let stage="資料不足，只看單案，不看趨勢", next=10;
+  if(fullCount>=50){stage="可產生較穩定的個人決策模式"; next=null;}
+  else if(fullCount>=20){stage="可產生初步個人化洞察"; next=50;}
+  else if(fullCount>=10){stage="初步觀察，可看傾向，不下定論"; next=20;}
+  const remaining=next===null?0:Math.max(0,next-fullCount);
+  return {total:cases.length,fullCount,stage,next,remaining,insightReady:fullCount>=20,stableReady:fullCount>=50};
+}
+function renderCalibrationMaturity(cases){
+  const m=buildCalibrationMaturity(cases);
+  const nextText=m.next===null?"已達較穩定觀察門檻":`距離下一階段還差 ${m.remaining} 筆完整回驗`;
+  return `<section class="calibration-maturity">
+    <div class="case-stats-head"><div><strong>個人校準成熟度</strong><small>資料少時只提示品質，資料夠時才看趨勢。</small></div><div class="case-stats-score">${m.fullCount} / ${m.total}</div></div>
+    <div class="case-stats-grid">
+      <div><span>總案例數</span><strong>${m.total}</strong></div>
+      <div><span>完整回驗數</span><strong>${m.fullCount}</strong></div>
+      <div><span>成熟度階段</span><strong>${escapeHTML(m.stage)}</strong></div>
+      <div><span>下一階段</span><strong>${escapeHTML(nextText)}</strong></div>
+    </div>
+  </section>`;
+}
+function caseQtype(caseItem){
+  return caseItem?.qtype||caseItem?.settings?.qtype||caseItem?.problemDiagnosis?.suggestedQtype||"未分類";
+}
+function bucketPercent(count,total){
+  return total?Math.round(count/total*100):0;
+}
+function buildQtypePatternStats(cases){
+  const byType=new Map();
+  cases.forEach(c=>{
+    const name=caseQtype(c);
+    const current=byType.get(name)||{name,count:0,fullReviewed:0,accuracySum:0,accuracyCount:0,riskFilled:0,riskReduced:0};
+    current.count+=1;
+    if(isFullyReviewedCase(c))current.fullReviewed+=1;
+    const accuracy=caseAccuracyValue(c);
+    if(accuracy!==null){current.accuracySum+=accuracy; current.accuracyCount+=1;}
+    const risk=c?.riskReduced||c?.feedback?.riskReduced;
+    if(risk){current.riskFilled+=1; if(["yes","partial",true].includes(risk))current.riskReduced+=1;}
+    byType.set(name,current);
+  });
+  const total=cases.length;
+  const items=[...byType.values()].map(x=>({
+    ...x,
+    percent:bucketPercent(x.count,total),
+    averageAccuracy:x.accuracyCount?x.accuracySum/x.accuracyCount:null,
+    riskReductionRate:x.riskFilled?Math.round(x.riskReduced/x.riskFilled*100):null
+  })).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
+  return {total,items,top:items[0]||null};
+}
+function buildHitAreaPatternStats(cases){
+  const byArea=new Map();
+  cases.forEach(c=>{
+    const area=(c?.hitArea||c?.feedback?.hitArea||"").trim();
+    if(!area)return;
+    const qtype=caseQtype(c);
+    const accuracy=caseAccuracyValue(c);
+    const current=byArea.get(area)||{name:area,count:0,accuracySum:0,accuracyCount:0,byQtype:new Map()};
+    current.count+=1;
+    if(accuracy!==null){current.accuracySum+=accuracy; current.accuracyCount+=1;}
+    current.byQtype.set(qtype,(current.byQtype.get(qtype)||0)+1);
+    byArea.set(area,current);
+  });
+  const items=[...byArea.values()].map(x=>({
+    ...x,
+    averageAccuracy:x.accuracyCount?x.accuracySum/x.accuracyCount:null,
+    qtypeDistribution:[...x.byQtype.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>({name,count}))
+  })).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
+  return {items,top:items[0]||null};
+}
+function extractVerifiedSymbols(caseItem){
+  const fb=caseItem?.feedback||{};
+  const sources=[caseItem?.verifiedSymbol,caseItem?.fulfilledSymbols,fb.verifiedSymbol,fb.fulfilledSymbols,fb.notes,fb.calibrationConclusion,caseItem?.calibrationConclusion,fb.calibration,caseItem?.calibration]
+    .flatMap(value=>Array.isArray(value)?value:[value])
+    .filter(Boolean);
+  const found=[];
+  sources.forEach(value=>{
+    String(value).split(/[、,，;；\n]/).forEach(part=>{
+      const symbol=normalizeVerifiedSymbol(part);
+      if(symbol)found.push(symbol);
+    });
+  });
+  return uniqueText(found);
+}
+function normalizeVerifiedSymbol(text){
+  const t=String(text||"").trim();
+  if(!t)return "";
+  if(t.includes("空亡")||t.includes("空"))return "空亡";
+  if(t.includes("驚門")||t.includes("驚"))return "驚門";
+  if(t.includes("玄武"))return "玄武";
+  if(t.includes("白虎"))return "白虎";
+  if(t.includes("生門"))return "生門";
+  if(t.includes("開門"))return "開門";
+  if(t.includes("景門"))return "景門";
+  if(t.includes("杜門"))return "杜門";
+  if(t.includes("死門"))return "死門";
+  if(t.includes("傷門"))return "傷門";
+  if(t.includes("六合"))return "六合";
+  if(t.includes("太陰"))return "太陰";
+  return "";
+}
+function buildSymbolOutcomeStats(cases){
+  const bySymbol=new Map();
+  cases.forEach(c=>{
+    const outcome=(c?.hitArea||c?.feedback?.hitArea||c?.outcome||c?.feedback?.outcome||"未填應驗面向").trim();
+    extractVerifiedSymbols(c).forEach(symbol=>{
+      const current=bySymbol.get(symbol)||{symbol,count:0,byOutcome:new Map()};
+      current.count+=1;
+      current.byOutcome.set(outcome,(current.byOutcome.get(outcome)||0)+1);
+      bySymbol.set(symbol,current);
+    });
+  });
+  const items=[...bySymbol.values()].map(x=>{
+    const outcomes=[...x.byOutcome.entries()].sort((a,b)=>b[1]-a[1]).map(([name,count])=>({name,count}));
+    return {...x,outcomes,topOutcome:outcomes[0]?.name||"未分類"};
+  }).sort((a,b)=>b.count-a.count||a.symbol.localeCompare(b.symbol));
+  return {items,top:items[0]||null};
+}
+function actionWasFollowed(caseItem){
+  const text=String(caseItem?.actionTaken||caseItem?.afterAction||caseItem?.feedback?.actionTaken||caseItem?.feedback?.afterAction||"").trim();
+  if(!text)return null;
+  if(/沒|未|無|no/i.test(text))return false;
+  if(/照|有|做|採用|yes|follow/i.test(text))return true;
+  return null;
+}
+function buildRiskReductionStats(cases){
+  const stats={actionFilled:0,followed:0,notFollowed:0,riskFilled:0,yes:0,partial:0,no:0,unknown:0,followedRiskReduced:0,notFollowedRiskNotReduced:0,followedRate:null,notFollowedNoReduceRate:null};
+  cases.forEach(c=>{
+    const followed=actionWasFollowed(c);
+    if(followed!==null){stats.actionFilled+=1; if(followed)stats.followed+=1; else stats.notFollowed+=1;}
+    const risk=c?.riskReduced||c?.feedback?.riskReduced;
+    if(risk){
+      stats.riskFilled+=1;
+      if(risk==="yes")stats.yes+=1;
+      else if(risk==="partial")stats.partial+=1;
+      else if(risk==="no")stats.no+=1;
+      else stats.unknown+=1;
+      if(followed===true&&["yes","partial",true].includes(risk))stats.followedRiskReduced+=1;
+      if(followed===false&&risk==="no")stats.notFollowedRiskNotReduced+=1;
+    }
+  });
+  stats.followedRate=stats.followed?Math.round(stats.followedRiskReduced/stats.followed*100):null;
+  stats.notFollowedNoReduceRate=stats.notFollowed?Math.round(stats.notFollowedRiskNotReduced/stats.notFollowed*100):null;
+  return stats;
+}
+function calibrationTopList(items,renderItem){
+  if(!items.length)return "<p class=\"calibration-summary\">目前資料不足，先累積完整回驗。</p>";
+  return `<ol class="calibration-top-list">${items.slice(0,3).map(renderItem).join("")}</ol>`;
+}
+function buildPersonalInsightHTML(cases){
+  const maturity=buildCalibrationMaturity(cases);
+  const qtypes=buildQtypePatternStats(cases);
+  const hitAreas=buildHitAreaPatternStats(cases);
+  const symbols=buildSymbolOutcomeStats(cases);
+  const risk=buildRiskReductionStats(cases);
+  const qtypeAdvice=qtypes.top?`你目前最常用 App 處理「${qtypes.top.name}」類問題；若是決策題，建議補上 A/B/C/D 選項，回驗價值會比單問吉凶高。`:"案例還不夠多，先累積 20 筆完整回驗，再看題型傾向。";
+  const hitPrefix=maturity.fullCount<20?"初步觀察：":"個人洞察：";
+  const hitAdvice=hitAreas.items.length?`${hitPrefix}你的案例中，「${hitAreas.items.slice(0,3).map(x=>x.name).join("、")}」較常成為應驗面向。之後不要急著判成成敗，先看是否應在訊息、延遲或風險控制。`:"目前還沒有足夠的應驗面向資料。";
+  const riskText=risk.followedRate===null?"目前回驗資料還不足，先補「是否照建議做」與「風險是否降低」，之後才能看出風險降級策略是否有效。":`照建議做的案例：${risk.followed} 筆；風險降低：${risk.followedRiskReduced} 筆；風險降級有效率：${risk.followedRate}%。目前只代表你的本機案例庫。`;
+  return `<section class="personal-insights">
+    <div class="case-stats-head"><div><strong>個人模式洞察</strong><small>只根據本機案例庫，不代表通用規則。</small></div></div>
+    <div class="insight-grid">
+      <article><h3>個人常見題型</h3>${maturity.fullCount<20?`<p class="calibration-summary">案例還不夠多，先累積 20 筆完整回驗，再看題型傾向。</p>`:calibrationTopList(qtypes.items,item=>`<li><strong>${escapeHTML(item.name)}</strong><span>${item.percent}%｜完整回驗 ${item.fullReviewed} 筆｜平均準確 ${item.averageAccuracy===null?"未填":formatNumber(item.averageAccuracy,1)}</span></li>`)}<p>${escapeHTML(qtypeAdvice)}</p></article>
+      <article><h3>個人常見應驗面向</h3>${calibrationTopList(hitAreas.items,item=>`<li><strong>${escapeHTML(item.name)}</strong><span>${item.count} 次｜平均準確 ${item.averageAccuracy===null?"未填":formatNumber(item.averageAccuracy,1)}</span></li>`)}<p>${escapeHTML(hitAdvice)}</p></article>
+      <article><h3>符號應驗統計</h3>${calibrationTopList(symbols.items,item=>`<li><strong>${escapeHTML(item.symbol)} → ${escapeHTML(item.topOutcome)}</strong><span>${item.count} 次</span></li>`)}<p>這不是通用規則，只是你的案例庫目前呈現的傾向。</p></article>
+      <article><h3>風險降級有效率</h3><div class="case-stats-grid compact"><div><span>照建議做</span><strong>${risk.followed}</strong></div><div><span>風險降低</span><strong>${risk.followedRiskReduced}</strong></div><div><span>有效率</span><strong>${risk.followedRate===null?"待累積":risk.followedRate+"%"}</strong></div></div><p>${escapeHTML(riskText)}</p></article>
+    </div>
+  </section>`;
+}
+function reportSymbols(report){
+  const text=JSON.stringify(report||{});
+  return ["空亡","驚門","玄武","白虎","生門","開門","景門","杜門","死門","傷門","六合","太陰"].filter(symbol=>text.includes(symbol)||normalizeVerifiedSymbol(text)===symbol);
+}
+function buildPersonalCalibrationModel(cases){
+  const maturity=buildCalibrationMaturity(cases);
+  return {maturity,qtypes:buildQtypePatternStats(cases),hitAreas:buildHitAreaPatternStats(cases),symbols:buildSymbolOutcomeStats(cases),risk:buildRiskReductionStats(cases)};
+}
+function buildPersonalCalibrationReminder(report,cases){
+  const model=buildPersonalCalibrationModel(cases);
+  if(model.maturity.fullCount<10)return ["目前案例還不夠多，先照建議做並回驗，累積後會出現個人化提醒。"];
+  const currentSymbols=reportSymbols(report);
+  const matched=model.symbols.items.find(item=>currentSymbols.includes(item.symbol));
+  if(matched)return [`你過去的案例中，${matched.symbol} 多半應在「${matched.topOutcome}」。這次若見 ${matched.symbol}，先用風險降級策略處理，不急著判死。`,"這不是改變術法規則，只是你的本機案例庫提醒。"];
+  const top=model.symbols.top;
+  if(top)return [`你目前最常回驗到的符號是「${top.symbol}」，多應在「${top.topOutcome}」。本次若出現類似風險，先留紀錄、小步驗證、再回驗。`,"這不是通用規則，只是個人案例庫傾向。"];
+  return ["目前已可做初步觀察，但尚未形成明確符號提醒。請持續補完整回驗。"];
+}
+function renderPersonalCalibrationReminder(report){
+  const box=typeof document!=="undefined"?document.getElementById("personalCalibrationReminder"):null;
+  if(!box)return "";
+  if(!report){box.innerHTML=""; return "";}
+  const lines=buildPersonalCalibrationReminder(report,loadCases());
+  box.innerHTML=`<div class="share-review-head"><strong>個人校準提醒</strong><span>${escapeHTML(lines[0])}</span>${lines[1]?`<span>${escapeHTML(lines[1])}</span>`:""}</div>`;
+  return box.innerHTML;
+}
+function buildPersonalCalibrationReportText(cases){
+  const maturity=buildCalibrationMaturity(cases);
+  const qtypes=buildQtypePatternStats(cases);
+  const hitAreas=buildHitAreaPatternStats(cases);
+  const symbols=buildSymbolOutcomeStats(cases);
+  const risk=buildRiskReductionStats(cases);
+  const lines=[
+    "九宮奇門個人校準報告",
+    "",
+    `案例總數：${maturity.total}`,
+    `完整回驗：${maturity.fullCount}`,
+    `成熟度：${maturity.stage}`,
+    "",
+    "一、最常問的題型",
+    ...(qtypes.items.slice(0,3).map((x,i)=>`${i+1}. ${x.name}：${x.percent}%，完整回驗 ${x.fullReviewed} 筆，平均準確 ${x.averageAccuracy===null?"未填":formatNumber(x.averageAccuracy,1)}`)||["目前資料不足"]),
+    "",
+    "二、最常應驗面向",
+    ...(hitAreas.items.slice(0,3).map((x,i)=>`${i+1}. ${x.name}：${x.count} 次，平均準確 ${x.averageAccuracy===null?"未填":formatNumber(x.averageAccuracy,1)}`)||["目前資料不足"]),
+    "",
+    "三、最常應驗符號",
+    ...(symbols.items.slice(0,3).map((x,i)=>`${i+1}. ${x.symbol} → ${x.topOutcome}：${x.count} 次`)||["目前資料不足"]),
+    "",
+    "四、風險降級有效率",
+    `有填是否照建議做：${risk.actionFilled} 筆`,
+    `照建議做：${risk.followed} 筆`,
+    `未照建議做：${risk.notFollowed} 筆`,
+    `有填風險是否降低：${risk.riskFilled} 筆`,
+    `照建議做且風險降低比例：${risk.followedRate===null?"待累積":risk.followedRate+"%"}`,
+    "",
+    "五、目前建議",
+    maturity.fullCount<20?"先補滿 20 筆完整回驗，再看個人化趨勢。":"可以開始把常見題型、應驗面向與風險降級策略作為下一次問事提醒。",
+    "",
+    "六、提醒",
+    "這份報告只根據本機案例庫產生，不代表通用規則。案例越完整，個人化洞察越有參考價值。"
+  ];
+  return lines.join("\n");
+}
+async function copyPersonalCalibrationReport(){
+  const ok=await copyText(buildPersonalCalibrationReportText(loadCases()));
+  toast(ok?"個人校準報告已複製。":"無法自動複製，請改用匯出案例。");
 }
 function renderOnboarding(){
   const mount=document.getElementById("onboardingMount"); if(!mount)return;
@@ -2740,6 +2996,7 @@ function init(){
   document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
   document.getElementById("copyFilteredCaseReviewChecklist").onclick=copyFilteredCaseReviewChecklist;
   document.getElementById("copyCaseCalibrationSummary").onclick=copyCaseCalibrationSummary;
+  document.getElementById("copyPersonalCalibrationReport").onclick=copyPersonalCalibrationReport;
   document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
   document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
   document.getElementById("exportFilteredCasesCsv").onclick=exportFilteredCasesCsv;
@@ -2977,4 +3234,20 @@ function runV5DevTests(){
   testCompareOptionTextsDiffer();
   testCompareDecisionCardFields();
 }
-init();
+if(typeof module!=="undefined"){
+  module.exports={
+    calibrationCompletenessScore,
+    isFullyReviewedCase,
+    buildCalibrationMaturity,
+    buildQtypePatternStats,
+    buildHitAreaPatternStats,
+    extractVerifiedSymbols,
+    normalizeVerifiedSymbol,
+    buildSymbolOutcomeStats,
+    buildRiskReductionStats,
+    buildPersonalCalibrationModel,
+    buildPersonalCalibrationReminder,
+    buildPersonalCalibrationReportText
+  };
+}
+if(typeof document!=="undefined"&&document.getElementById("buildBtn"))init();

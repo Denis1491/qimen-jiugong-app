@@ -7,8 +7,8 @@
   <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
   <meta name="theme-color" content="#2f332b">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.2-review-share-1">
-  <link rel="stylesheet" href="style.css?v=5.2-review-share-1">
+  <link rel="manifest" href="manifest.webmanifest?v=5.3-personal-calibration-1">
+  <link rel="stylesheet" href="style.css?v=5.3-personal-calibration-1">
 </head>
 <body>
 <div id="onboardingMount"></div>
@@ -31,7 +31,7 @@
       <div class="metric"><div class="label">鎖定</div><div class="value" id="metricLock">未選數</div></div>
       <div class="metric"><div class="label">分數</div><div class="value" id="metricScore">—</div></div>
       <div class="metric"><div class="label">全盤</div><div class="value" id="metricOverall">—</div></div>
-      <div class="metric metric-wide"><div class="label">規則</div><div class="value" id="metricRules">V5.0</div></div>
+      <div class="metric metric-wide"><div class="label">規則</div><div class="value" id="metricRules">App V5.3｜術法規則 V5.0 待校準</div></div>
     </aside>
   </header>
 
@@ -118,6 +118,7 @@
     <aside class="result-card card">
       <div class="section-title"><div><h2>結果</h2><small id="resultSub">尚未選數</small></div></div>
       <div id="decisionBrief" class="decision-brief empty">排盤後會先給你一張可執行的決策卡。</div>
+      <div id="personalCalibrationReminder" class="personal-calibration-reminder"></div>
       <div id="shareReviewPanel" class="share-review-panel"></div>
       <div id="actionChecklist" class="action-checklist"></div>
       <div class="result-headline" id="resultHeadline">先起盤並選數。</div>
@@ -175,10 +176,11 @@
         <button class="btn btn-soft" id="copyCaseReviewChecklist">複製回驗清單</button>
         <button class="btn btn-soft" id="copyFilteredCaseReviewChecklist">複製目前清單</button>
         <button class="btn btn-soft" id="copyCaseCalibrationSummary">複製校準摘要</button>
+        <button class="btn btn-soft" id="copyPersonalCalibrationReport">複製個人校準報告</button>
         <button class="btn btn-soft" id="exportCases">匯出案例</button>
         <button class="btn btn-soft" id="exportCasesCsv">匯出回驗 CSV</button>
         <button class="btn btn-soft" id="exportFilteredCasesCsv">匯出目前 CSV</button>
-        <a class="btn btn-soft" href="sample-data/qimen_v5_100_synthetic_cases.json?v=5.2-review-share-1" download>下載示範100筆</a>
+        <a class="btn btn-soft" href="sample-data/qimen_v5_100_synthetic_cases.json?v=5.3-personal-calibration-1" download>下載示範100筆</a>
         <button class="btn btn-ghost" id="clearCases">清空</button>
       </div>
     </div>
@@ -206,8 +208,8 @@
   </section>
   </section>
 </div>
-<script src="engine.js?v=5.2-review-share-1" defer></script>
-<script src="qimen_soul_copy_bank.js?v=5.2-review-share-1" defer></script>
-<script src="app.js?v=5.2-review-share-1" defer></script>
+<script src="engine.js?v=5.3-personal-calibration-1" defer></script>
+<script src="qimen_soul_copy_bank.js?v=5.3-personal-calibration-1" defer></script>
+<script src="app.js?v=5.3-personal-calibration-1" defer></script>
 </body>
 </html>
