@@ -7,10 +7,11 @@
   <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
   <meta name="theme-color" content="#2f332b">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.1-ux-1">
-  <link rel="stylesheet" href="style.css?v=5.1-ux-1">
+  <link rel="manifest" href="manifest.webmanifest?v=5.2-review-share-1">
+  <link rel="stylesheet" href="style.css?v=5.2-review-share-1">
 </head>
 <body>
+<div id="onboardingMount"></div>
 <div class="shell">
   <header class="hero">
     <div class="hero-main card">
@@ -35,6 +36,7 @@
   </header>
 
   <section class="view active" id="viewAsk" data-view-panel="ask">
+  <div id="pendingReviewBannerAsk"></div>
   <section class="panel card controls ask-card">
     <div class="section-title">
       <div><h2>你想問什麼？</h2><small>寫一件具體事情，先讓 App 幫你拆問題。</small></div>
@@ -116,6 +118,7 @@
     <aside class="result-card card">
       <div class="section-title"><div><h2>結果</h2><small id="resultSub">尚未選數</small></div></div>
       <div id="decisionBrief" class="decision-brief empty">排盤後會先給你一張可執行的決策卡。</div>
+      <div id="shareReviewPanel" class="share-review-panel"></div>
       <div id="actionChecklist" class="action-checklist"></div>
       <div class="result-headline" id="resultHeadline">先起盤並選數。</div>
       <div class="big-score"><span class="num" id="scoreNum">—</span><span class="suffix">/100</span></div>
@@ -175,7 +178,7 @@
         <button class="btn btn-soft" id="exportCases">匯出案例</button>
         <button class="btn btn-soft" id="exportCasesCsv">匯出回驗 CSV</button>
         <button class="btn btn-soft" id="exportFilteredCasesCsv">匯出目前 CSV</button>
-        <a class="btn btn-soft" href="sample-data/qimen_v5_100_synthetic_cases.json?v=5.1-ux-1" download>下載示範100筆</a>
+        <a class="btn btn-soft" href="sample-data/qimen_v5_100_synthetic_cases.json?v=5.2-review-share-1" download>下載示範100筆</a>
         <button class="btn btn-ghost" id="clearCases">清空</button>
       </div>
     </div>
@@ -197,13 +200,14 @@
       <div class="field"><label for="caseCalibration">校準結論</label><select id="caseCalibration"><option value="">未回填</option><option value="accurate">判斷準</option><option value="delayed">只是延遲</option><option value="wrong-area">應事不同</option><option value="too-strong">說得太死</option><option value="downgrade">需改成風險降級</option><option value="unclear">仍待觀察</option></select></div>
     </div>
     <div class="case-coach-hint" id="caseCoachHint"></div>
+    <div id="pendingReviewBannerCase"></div>
     <div class="case-stats" id="caseStats"></div>
     <div class="case-list" id="caseList"></div>
   </section>
   </section>
 </div>
-<script src="engine.js?v=5.1-ux-1" defer></script>
-<script src="qimen_soul_copy_bank.js?v=5.1-ux-1" defer></script>
-<script src="app.js?v=5.1-ux-1" defer></script>
+<script src="engine.js?v=5.2-review-share-1" defer></script>
+<script src="qimen_soul_copy_bank.js?v=5.2-review-share-1" defer></script>
+<script src="app.js?v=5.2-review-share-1" defer></script>
 </body>
 </html>

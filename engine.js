@@ -1,5 +1,5 @@
 window.QIMEN_RULE_VERSION = {
-  app: "5.1",
+  app: "5.2",
   lock: "lock-palace.v5.0",
   scoring: "scoring.v5.0",
   qtype: "qtype-rules.v5.0 待校準",

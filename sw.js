@@ -1,13 +1,13 @@
-const CACHE_NAME = "qimen-jiugong-v5-1-ux-1";
+const CACHE_NAME = "qimen-jiugong-v5-2-review-share-1";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=5.1-ux-1",
-  "./engine.js?v=5.1-ux-1",
-  "./qimen_soul_copy_bank.js?v=5.1-ux-1",
-  "./app.js?v=5.1-ux-1",
-  "./manifest.webmanifest?v=5.1-ux-1",
-  "./sample-data/qimen_v5_100_synthetic_cases.json?v=5.1-ux-1",
+  "./style.css?v=5.2-review-share-1",
+  "./engine.js?v=5.2-review-share-1",
+  "./qimen_soul_copy_bank.js?v=5.2-review-share-1",
+  "./app.js?v=5.2-review-share-1",
+  "./manifest.webmanifest?v=5.2-review-share-1",
+  "./sample-data/qimen_v5_100_synthetic_cases.json?v=5.2-review-share-1",
   "./rules/rules.json",
   "./rules/lock-palace.json",
   "./rules/scoring.json",

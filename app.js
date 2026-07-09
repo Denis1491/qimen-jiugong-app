@@ -81,6 +81,8 @@ const RULE_VERSION = window.QIMEN_RULE_VERSION || {
 const CASE_STORAGE_KEY = window.QIMEN_CASE_STORAGE_KEY || "qimen-jiugong-cases-v5";
 const USER_MODE_KEY = "qimen-user-mode-v5";
 const ACTION_CHECKLIST_KEY = "qimen-action-checklist-v5";
+const PENDING_REVIEW_KEY = "qimen-pending-reviews-v5";
+const ONBOARDING_KEY = "qimen-onboarding-v52-seen";
 const DOOR_ADVICE = {
   "開門":"適合開啟、見客、工作面試、談機會、做公開行動。",
   "休門":"適合休整、談和、修復關係、養精蓄銳、低調處理。",
@@ -410,7 +412,7 @@ function symbolBox(label,type,sym){return `<div class="symbol-box"><span>${label
 function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
 
 // ===== 渲染 =====
-function renderAll(){applyUserMode(); updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases();}
+function renderAll(){applyUserMode(); updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersion(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases(); renderPendingReviewBanner();}
 function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途生效・待校準`}
 function setNote(t){document.getElementById("autoNote").textContent=t}
 function showView(view){
@@ -709,6 +711,78 @@ function loadCases(){
   try{const raw=localStorage.getItem(CASE_STORAGE_KEY); return raw?JSON.parse(raw):[]}catch(e){return []}
 }
 function saveCases(cases){localStorage.setItem(CASE_STORAGE_KEY,JSON.stringify(cases))}
+function loadPendingReviews(){
+  try{return JSON.parse(localStorage.getItem(PENDING_REVIEW_KEY)||"[]")}catch(e){return []}
+}
+function savePendingReviews(items){
+  localStorage.setItem(PENDING_REVIEW_KEY,JSON.stringify(items||[]));
+}
+function reviewDueDate(option){
+  const now=new Date();
+  if(option==="tonight"){
+    const due=new Date(now); due.setHours(21,0,0,0);
+    if(due<=now)due.setDate(due.getDate()+1);
+    return due;
+  }
+  if(option==="tomorrow"){
+    const due=new Date(now); due.setDate(due.getDate()+1); due.setHours(9,0,0,0);
+    return due;
+  }
+  return null;
+}
+function scheduleCaseReview(caseId,option="none"){
+  if(!caseId||option==="none")return null;
+  const due=reviewDueDate(option);
+  if(!due)return null;
+  const cases=loadCases();
+  const item=cases.find(c=>c.id===caseId)||{};
+  const review={id:`review-${Date.now()}`,caseId,title:item.title||"待回驗案例",question:item.question||questionText(),dueAt:due.toISOString(),createdAt:new Date().toISOString(),done:false};
+  const items=loadPendingReviews().filter(x=>!(x.caseId===caseId&&!x.done));
+  items.unshift(review);
+  savePendingReviews(items);
+  renderPendingReviewBanner();
+  return review;
+}
+function duePendingReviews(now=new Date()){
+  const t=now.getTime();
+  return loadPendingReviews().filter(item=>!item.done&&Date.parse(item.dueAt)<=t);
+}
+function markReviewDone(reviewId){
+  const items=loadPendingReviews().map(item=>item.id===reviewId?{...item,done:true,doneAt:new Date().toISOString()}:item);
+  savePendingReviews(items);
+  renderPendingReviewBanner();
+}
+function snoozeReview(reviewId){
+  const next=new Date(Date.now()+60*60*1000).toISOString();
+  const items=loadPendingReviews().map(item=>item.id===reviewId?{...item,dueAt:next}:item);
+  savePendingReviews(items);
+  renderPendingReviewBanner();
+}
+function goReviewPending(reviewId){
+  const review=loadPendingReviews().find(item=>item.id===reviewId);
+  const item=loadCases().find(c=>c.id===review?.caseId);
+  if(item){
+    activeCaseId=item.id;
+    restoreChartPayload(item.payload);
+    fillCaseForm(item);
+    showView("case");
+    highlightMissingCaseFields(item);
+  }else{
+    showView("case");
+  }
+}
+function renderPendingReviewBanner(){
+  const due=duePendingReviews();
+  const html=due.length?`<div class="pending-review-banner">
+    <div><strong>你有 ${due.length} 個案例待回驗。</strong><span>這不是要證明 App 一定準，而是幫你校準：它應在哪裡？說得太重、太輕，還是剛好？</span></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" type="button" onclick="goReviewPending('${escapeHTML(due[0].id)}')">去回驗</button>
+      <button class="btn btn-soft" type="button" onclick="snoozeReview('${escapeHTML(due[0].id)}')">稍後提醒</button>
+      <button class="btn btn-ghost" type="button" onclick="markReviewDone('${escapeHTML(due[0].id)}')">標記已完成</button>
+    </div>
+  </div>`:"";
+  ["pendingReviewBannerAsk","pendingReviewBannerCase"].forEach(id=>{const box=document.getElementById(id); if(box)box.innerHTML=html;});
+}
 async function importJsonFile(file){
   if(!file)return;
   try{
@@ -719,7 +793,7 @@ async function importJsonFile(file){
 }
 function registerServiceWorker(){
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.1-ux-1").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.2-review-share-1").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -1375,6 +1449,7 @@ function setUserMode(mode){
   userMode=mode==="expert"?"expert":"novice";
   localStorage.setItem(USER_MODE_KEY,userMode);
   applyUserMode();
+  showOnboardingIfNeeded();
 }
 function applyUserMode(){
   document.body.classList.toggle("user-expert",userMode==="expert");
@@ -1480,9 +1555,41 @@ function briefFromCompare(ctx){
     nextStep:`下一步：先採 ${winner.side} 的小測試，晚上回填實際採用與應驗。`
   };
 }
+function compareOptionOneLineRisk(choice){
+  if(!choice)return "條件不足，先不要重押。";
+  if(choice.denied)return "目前有直接否定訊號，不適合硬推。";
+  const risk=choice.decision?.risk||"中";
+  const reversible=choice.decision?.reversibility||"中";
+  if(risk==="低"||reversible==="高")return "風險較容易降級，適合小步測試。";
+  if(risk==="高")return "成本或反作用偏高，先縮小承諾。";
+  return "可做，但要先補條件，不要講滿。";
+}
+function minimumReversibleStep(choice){
+  if(!choice)return "先補一個最小確認動作。";
+  const name=choice.name||`選項 ${choice.side}`;
+  if(choice.denied)return `先不要執行 ${name}，改成確認條件是否真的存在。`;
+  return `先針對 ${name} 做一個可撤回的小測試，不承諾最後結果。`;
+}
+function briefFromCompareV52(ctx){
+  const winner=ctx.winner;
+  const fs=winner.report.fengShuiPlan;
+  const others=ctx.ranked.filter(choice=>choice.side!==winner.side).map(choice=>`${choice.side} ${choice.name}：${compareOptionOneLineRisk(choice)}`);
+  return {
+    conclusion:`推薦：${winner.side} ${winner.name}`,
+    scoreText:`決策分 ${winner.decision.decisionScore}/100`,
+    reasonOneLine:`原因：${compareOptionOneLineRisk(winner)} 其他選項：${compactText(others.join("；"),90)}`,
+    doNow:[minimumReversibleStep(winner),"先確認一個關鍵條件","保留退路，不一次投入全部資源"],
+    avoidNow:["不要把測試說成承諾","不要同時推進所有選項","不要忽略其他選項的一句話風險"],
+    bestDirection:fs.activateChoice.direction,
+    quietDirection:fs.quietChoice.direction,
+    avoidDirection:fs.avoidChoice.direction,
+    nextStep:`最小可逆下一步：${minimumReversibleStep(winner)}`
+  };
+}
 function setDecisionBrief(brief){
   window.currentDecisionBrief=brief;
   const box=document.getElementById("decisionBrief"); if(box)box.className="decision-brief", box.innerHTML=decisionBriefHTML(brief);
+  renderShareReviewPanel(brief);
 }
 function briefAdviceText(brief=window.currentDecisionBrief){
   if(!brief)return "尚未產生簡短建議。";
@@ -1495,13 +1602,116 @@ async function copyBriefAdvice(){
 function openEvidenceDetails(){
   document.querySelectorAll(".result-card .info-fold,.report-fold,.chart-card .info-fold").forEach(d=>d.open=true);
 }
+function padShareLines(items,count=3){
+  const arr=(items||[]).map(x=>cleanSentence(x)).filter(Boolean);
+  while(arr.length<count)arr.push("小步確認，不一次承諾太多");
+  return arr.slice(0,count);
+}
+function buildShareCardText(brief=window.currentDecisionBrief, sourceChart=chart, question=questionText()){
+  if(!brief)return "九宮奇門決策卡\n\n尚未產生決策卡。";
+  const doNow=padShareLines(brief.doNow,3);
+  const avoidNow=padShareLines(brief.avoidNow,3);
+  return [
+    "九宮奇門決策卡",
+    "",
+    `問題：${question||sourceChart?.question||"未填"}`,
+    `結論：${brief.conclusion||"待判斷"}`,
+    `原因：${brief.reasonOneLine||"先看風險是否可控，再小步驗證。"}`,
+    "",
+    "今天先做：",
+    ...doNow.map((x,i)=>`${i+1}. ${x}`),
+    "",
+    "今天先避：",
+    ...avoidNow.map((x,i)=>`${i+1}. ${x}`),
+    "",
+    `可用方：${brief.bestDirection||"待確認"}`,
+    `安靜方：${brief.quietDirection||"待確認"}`,
+    `避動方：${brief.avoidDirection||"待確認"}`,
+    "",
+    "回驗：今晚或明日記錄實際發生什麼。"
+  ].join("\n");
+}
+async function copyShareCardText(){
+  const ok=await copyText(buildShareCardText());
+  toast(ok?"文字決策卡已複製。":"無法自動複製，請改用報告文字。");
+}
+function drawWrappedText(ctx,text,x,y,maxWidth,lineHeight){
+  const paragraphs=String(text||"").split(/\n/);
+  let cy=y;
+  paragraphs.forEach(paragraph=>{
+    if(!paragraph){cy+=lineHeight; return;}
+    let line="";
+    Array.from(paragraph).forEach(ch=>{
+      const test=line+ch;
+      if(ctx.measureText(test).width>maxWidth&&line){
+        ctx.fillText(line,x,cy);
+        line=ch;
+        cy+=lineHeight;
+      }else{
+        line=test;
+      }
+    });
+    if(line)ctx.fillText(line,x,cy);
+    cy+=lineHeight;
+  });
+  return cy;
+}
+function downloadCanvasAsPng(canvas,filename){
+  const dataUrl=canvas.toDataURL("image/png");
+  const [meta,data]=dataUrl.split(",");
+  const mime=(meta.match(/data:(.*?);base64/)||[])[1]||"image/png";
+  const binary=atob(data);
+  const bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([bytes],{type:mime}));
+  const a=document.createElement("a");
+  a.download=filename;
+  a.href=url;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1200);
+}
+function downloadShareCardImage(){
+  const text=buildShareCardText();
+  const canvas=document.createElement("canvas");
+  canvas.width=900; canvas.height=1200;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#f7efdf"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="rgba(255,253,246,.96)"; ctx.fillRect(54,54,792,1092);
+  ctx.strokeStyle="#b9a98c"; ctx.lineWidth=3; ctx.strokeRect(54,54,792,1092);
+  ctx.fillStyle="#2f332b"; ctx.font='700 42px "Microsoft JhengHei", "Noto Serif TC", serif';
+  ctx.fillText("九宮奇門決策卡",92,124);
+  ctx.strokeStyle="#9f3328"; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(92,150); ctx.lineTo(808,150); ctx.stroke();
+  ctx.fillStyle="#2f332b"; ctx.font='28px "Microsoft JhengHei", "Noto Serif TC", serif';
+  drawWrappedText(ctx,text.replace(/^九宮奇門決策卡\n\n?/,""),92,206,716,42);
+  downloadCanvasAsPng(canvas,`qimen-decision-card-${Date.now()}.png`);
+}
+function selectedReviewOption(){
+  return document.querySelector("input[name='reviewReminderOption']:checked")?.value||"none";
+}
+function renderShareReviewPanel(brief=window.currentDecisionBrief){
+  const box=document.getElementById("shareReviewPanel"); if(!box)return;
+  if(!chart||!brief){box.innerHTML=""; return;}
+  box.innerHTML=`<div class="share-review-head"><strong>分享與回驗</strong><span>先分享短卡，再安排今晚或明日回來校準。</span></div>
+  <div class="btn-row share-actions">
+    <button class="btn btn-primary" type="button" onclick="copyShareCardText()">複製文字卡</button>
+    <button class="btn btn-soft" type="button" onclick="downloadShareCardImage()">下載圖片卡</button>
+  </div>
+  <div class="review-schedule">
+    <label><input type="radio" name="reviewReminderOption" value="tonight" checked> 今晚 21:00</label>
+    <label><input type="radio" name="reviewReminderOption" value="tomorrow"> 明天 09:00</label>
+    <label><input type="radio" name="reviewReminderOption" value="none"> 不提醒</label>
+    <button class="btn btn-teal" type="button" onclick="saveCurrentCaseWithReview()">儲存案例並設定回驗</button>
+  </div>`;
+}
 function makeSummary(p,s){const r=makeSoulReport(p,s); return {short:r.level,total:r.headline,action:String(r.actionPlan).replace(/\n/g," "),avoid:String(r.avoidPlan).replace(/\n/g," "),fengshui:r.fengShui.replace(/\n/g," ")}}
 function renderResult(){
   const metricLock=document.getElementById("metricLock"), metricScore=document.getElementById("metricScore");
-  if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; document.getElementById("decisionBrief").className="decision-brief empty"; document.getElementById("decisionBrief").textContent="排盤後會先給你一張可執行的決策卡。"; renderActionChecklist([]); metricLock.textContent="未選數"; metricScore.textContent="—"; return}
+  if(!chart||!selectedNum){document.getElementById("resultSub").textContent="尚未選數"; document.getElementById("resultHeadline").textContent="先起盤並選數。"; document.getElementById("scoreNum").textContent="—"; document.getElementById("gradeText").textContent="未鎖定"; document.getElementById("scoreBar").style.width="0%"; document.getElementById("resultList").innerHTML=""; document.getElementById("reasonTabs").innerHTML=""; document.getElementById("decisionBrief").className="decision-brief empty"; document.getElementById("decisionBrief").textContent="排盤後會先給你一張可執行的決策卡。"; renderShareReviewPanel(null); renderActionChecklist([]); metricLock.textContent="未選數"; metricScore.textContent="—"; return}
   if(isCompareChart()){
     const ctx=buildCompareContext();
-    const brief=briefFromCompare(ctx);
+    const brief=briefFromCompareV52(ctx);
     setDecisionBrief(brief);
     renderActionChecklist(ensureChecklist(checklistDefaultsForCompare(ctx)));
     metricLock.textContent=ctx.choices.map(c=>`${c.side}:${c.num}`).join("｜");
@@ -1795,11 +2005,16 @@ function clearCaseFeedbackForm(){
   const deviation=document.getElementById("caseDeviationResult"); if(deviation)deviation.value="";
   const calibration=document.getElementById("caseCalibration"); if(calibration)calibration.value="";
 }
-function saveCurrentCase(){
+function saveCurrentCase(reviewOption="none"){
   try{
-    const cases=loadCases(); cases.unshift(currentCase()); saveCases(cases.slice(0,100));
+    const item=currentCase();
+    const cases=loadCases(); cases.unshift(item); saveCases(cases.slice(0,100));
+    scheduleCaseReview(item.id,reviewOption);
     activeCaseId=null; clearCaseFeedbackForm(); renderCases(); toast("案例已儲存。");
   }catch(err){toast(err.message||"案例儲存失敗。")}
+}
+function saveCurrentCaseWithReview(){
+  saveCurrentCase(selectedReviewOption());
 }
 function updateCaseResult(){
   if(!activeCaseId){toast("請先從案例庫按「回看」，再回填結果。"); return}
@@ -2358,11 +2573,149 @@ function handleCaseStatsClick(event){
 }
 
 // ===== 初始化 =====
+function reviewFieldDefinitions(c){
+  const fb=c?.feedback||{};
+  const defs=[
+    {key:"outcome",label:"實際結果",id:"caseOutcome",done:Boolean((c?.outcome||fb.outcome||"").trim())},
+    {key:"accuracy",label:"準確度",id:"caseAccuracy",done:caseAccuracyValue(c)!==null},
+    {key:"hitArea",label:"應驗面向",id:"caseHitArea",done:Boolean(fb.hitArea||c?.hitArea)},
+    {key:"fulfilledSymbols",label:"應驗象",id:"caseVerifiedSymbol",done:Boolean((c?.fulfilledSymbols||c?.verifiedSymbol||fb.fulfilledSymbols||fb.verifiedSymbol||"").trim())},
+    {key:"actionTaken",label:"是否照建議做",id:"caseAfterAction",done:Boolean((c?.actionTaken||c?.afterAction||fb.actionTaken||fb.afterAction||"").trim())},
+    {key:"riskReduced",label:"風險是否降低",id:"caseRiskReduced",done:Boolean(c?.riskReduced||fb.riskReduced)},
+    {key:"calibrationConclusion",label:"校準結論",id:"caseCalibration",done:Boolean(c?.calibrationConclusion||c?.calibration||fb.calibrationConclusion||fb.calibration)}
+  ];
+  if(isCompareCase(c)){
+    defs.push({key:"compareChosen",label:"比較題實際採用",id:"caseCompareChosen",done:Boolean(c?.compareChosen||fb.compareChosen)});
+    defs.push({key:"compareHit",label:"比較題實際應驗",id:"caseCompareHit",done:Boolean(c?.compareHit||fb.compareHit)});
+    defs.push({key:"compareNote",label:"比較回驗備註",id:"caseCompareNote",done:Boolean((c?.compareNote||fb.compareNote||"").trim())});
+  }
+  return defs;
+}
+function caseReviewCompletion(caseItem){
+  const defs=reviewFieldDefinitions(caseItem);
+  const done=defs.filter(x=>x.done).length;
+  return {done,total:defs.length,missing:defs.filter(x=>!x.done).map(x=>x.label),percent:Math.round(done/defs.length*100)};
+}
+function caseMissingFields(caseItem){
+  return reviewFieldDefinitions(caseItem).filter(x=>!x.done);
+}
+function caseCompletion(c){
+  return caseReviewCompletion(c);
+}
+function caseMissingFieldId(name){
+  const found=reviewFieldDefinitions({}).find(x=>x.label===name);
+  return found?.id||"";
+}
+function focusFirstMissingCaseField(caseItem){
+  document.querySelectorAll(".review-missing").forEach(el=>el.classList.remove("review-missing"));
+  const missing=caseMissingFields(caseItem);
+  missing.forEach(item=>{
+    const el=document.getElementById(item.id);
+    if(el)el.closest(".field")?.classList.add("review-missing");
+  });
+  const first=missing[0]?document.getElementById(missing[0].id):null;
+  if(first){
+    first.scrollIntoView({behavior:"smooth",block:"center"});
+    setTimeout(()=>first.focus?.(),180);
+  }
+  return missing[0]||null;
+}
+function renderCaseCoachHint(caseItem){
+  const hint=document.getElementById("caseCoachHint"); if(!hint)return;
+  const missing=caseMissingFields(caseItem);
+  hint.innerHTML=`<strong>這個案例還差 ${missing.length} 步完成回驗</strong>
+  <span>這個案例不是要證明 App 一定準，而是幫你校準：</span>
+  <span>1. 它應在什麼事？ 2. 說得太重、太輕，還是剛好？ 3. 你有沒有照建議做？ 4. 風險有沒有真的降低？</span>
+  <span>缺：${escapeHTML(missing.map(x=>x.label).join("、")||"已補齊")}</span>`;
+}
+function highlightMissingCaseFields(caseItem){
+  focusFirstMissingCaseField(caseItem);
+  renderCaseCoachHint(caseItem);
+}
+function buildCalibrationStats(cases){
+  const reviewed=cases.filter(c=>Boolean((c?.outcome||c?.feedback?.outcome||"").trim())||caseAccuracyValue(c)!==null||Boolean(c?.feedback?.hitArea||c?.hitArea));
+  const accuracies=cases.map(caseAccuracyValue).filter(v=>v!==null);
+  const riskFilled=cases.filter(c=>Boolean(c?.riskReduced||c?.feedback?.riskReduced));
+  const riskReduced=riskFilled.filter(c=>["yes","partial",true].includes(c?.riskReduced||c?.feedback?.riskReduced));
+  const qtypes=new Map(), hitAreas=new Map();
+  cases.forEach(c=>{
+    incrementBucket(qtypes,c?.qtype||c?.problemDiagnosis?.suggestedQtype||"未分類",null);
+    const hit=c?.feedback?.hitArea||c?.hitArea;
+    if(hit)incrementBucket(hitAreas,hit,null);
+  });
+  const compareCases=cases.filter(isCompareCase);
+  const adopted=compareCases.filter(c=>{
+    const winner=compareWinnerFromCase(c);
+    const chosen=compareChosenFromCase(c);
+    return winner&&chosen&&winner===chosen;
+  });
+  return {
+    total:cases.length,
+    reviewed:reviewed.length,
+    completionRate:cases.length?Math.round(reviewed.length/cases.length*100):0,
+    averageAccuracy:accuracies.length?accuracies.reduce((a,b)=>a+b,0)/accuracies.length:null,
+    topHitArea:rankedBuckets(hitAreas,1)[0]?.name||"待累積",
+    riskReductionRate:riskFilled.length?Math.round(riskReduced.length/riskFilled.length*100):null,
+    topQtype:rankedBuckets(qtypes,1)[0]?.name||"待累積",
+    compareAdoptionRate:compareCases.length?Math.round(adopted.length/compareCases.length*100):null
+  };
+}
+function renderCalibrationDashboard(cases=loadCases()){
+  const stats=buildCalibrationStats(cases);
+  const avg=stats.averageAccuracy===null?"待回填":`${formatNumber(stats.averageAccuracy,1)} 星`;
+  const risk=stats.riskReductionRate===null?"待回填":`${stats.riskReductionRate}%`;
+  const compare=stats.compareAdoptionRate===null?"待回填":`${stats.compareAdoptionRate}%`;
+  const summary=stats.reviewed<20?"案例還不夠多，先累積 20 筆回驗資料，再看校準趨勢會更有意義。":`你目前累積 ${stats.total} 筆案例，其中 ${stats.reviewed} 筆已回驗。資料越完整，App 越能幫你看出哪些題型比較準、哪些象容易應在現實事件、哪些建議真的有降低風險。`;
+  return `<div class="case-stats-head"><div><strong>我的校準統計</strong><small>只統計你自己的回驗資料，不代表術數規則已校準完成。</small></div><div class="case-stats-score">${escapeHTML(avg)}</div></div>
+  <div class="case-stats-grid">
+    <div><span>總案例數</span><strong>${stats.total}</strong></div>
+    <div><span>已回驗案例數</span><strong>${stats.reviewed}</strong></div>
+    <div><span>回驗完成率</span><strong>${stats.completionRate}%</strong></div>
+    <div><span>平均準確度</span><strong>${escapeHTML(avg)}</strong></div>
+    <div><span>最常應驗面向</span><strong>${escapeHTML(stats.topHitArea)}</strong></div>
+    <div><span>風險降低率</span><strong>${escapeHTML(risk)}</strong></div>
+    <div><span>最常使用題型</span><strong>${escapeHTML(stats.topQtype)}</strong></div>
+    <div><span>比較題推薦採用率</span><strong>${escapeHTML(compare)}</strong></div>
+  </div>
+  <p class="calibration-summary">${escapeHTML(summary)}</p>`;
+}
+function renderCaseStats(allCases=loadCases()){
+  const box=document.getElementById("caseStats"); if(!box)return;
+  const stats=caseStatsFromCases(allCases);
+  const nextTask=caseTrainingTask(allCases,stats);
+  box.innerHTML=`${renderCalibrationDashboard(allCases)}${caseProgressHTML(stats.milestone)}${caseTrainingTaskHTML(nextTask)}`;
+}
+function renderOnboarding(){
+  const mount=document.getElementById("onboardingMount"); if(!mount)return;
+  mount.innerHTML=`<div class="onboarding-backdrop">
+    <div class="onboarding-card">
+      <div class="section-title"><div><h2>30 秒開始使用</h2><small>先完成一次決策，不用先學術語。</small></div></div>
+      <ol class="onboarding-steps">
+        <li><strong>先問清楚</strong><span>輸入一件具體事情，不要只寫「運勢如何」。</span></li>
+        <li><strong>App 先診斷</strong><span>App 會幫你判斷題型、風險與建議問法。</span></li>
+        <li><strong>選數字</strong><span>憑直覺選 1-9，不用先看盤。</span></li>
+        <li><strong>看決策卡，晚上回驗</strong><span>先照三條建議做，晚上回來記錄結果。</span></li>
+      </ol>
+      <div class="btn-row"><button class="btn btn-primary" type="button" onclick="dismissOnboarding()">開始使用</button><button class="btn btn-ghost" type="button" onclick="dismissOnboarding()">不再顯示</button></div>
+    </div>
+  </div>`;
+}
+function dismissOnboarding(){
+  localStorage.setItem(ONBOARDING_KEY,"1");
+  const mount=document.getElementById("onboardingMount"); if(mount)mount.innerHTML="";
+}
+function showOnboardingIfNeeded(){
+  if(userMode!=="novice")return;
+  if(localStorage.getItem(ONBOARDING_KEY))return;
+  renderOnboarding();
+}
 function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`}
 function init(){
   const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
   renderAll();
   showView("ask");
+  renderPendingReviewBanner();
+  showOnboardingIfNeeded();
   document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.view)));
   document.getElementById("quickExample").onclick=()=>{setSelectionMode("single"); compareSelections=blankCompareSelections(); activeCompareSide="A"; setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
   document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
