@@ -25,7 +25,7 @@ global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () =
 const core = require(path.join(root, "app.js"));
 const timeQimen = require(path.join(root, "timeqimen-engine.js"));
 
-const assetVersion = "5.5-shijia-3";
+const assetVersion = "5.5-shijia-4";
 assert(html.includes(`style.css?v=${assetVersion}`), "index.html must load V5.5 CSS");
 assert(html.includes(`engine.js?v=${assetVersion}`), "index.html must load V5.5 metadata");
 assert(html.includes(`timeqimen-engine.js?v=${assetVersion}`), "index.html must load the Time-Qimen engine");
@@ -39,8 +39,9 @@ assert(html.includes('id="resultScore"') && html.includes('id="resultVerdict"'),
 assert(html.includes('id="resetBtn"'), "reset action is required");
 assert(html.includes('id="openChartBtn"') && html.includes('id="backToResultBtn"'), "full-chart navigation actions are required");
 assert(html.includes('id="simplePalaceGrid"') && html.includes('id="palaceDetail"'), "full-chart grid and palace detail are required");
-assert(html.includes('class="chart-stem-key"') && html.includes("甲 乙 丙 丁 戊 己 庚 辛 壬 癸"), "the full chart must include the ten heavenly stems legend");
+assert(html.includes('class="chart-stem-key"') && html.includes('aria-label="甲乙丙丁戊己庚辛壬癸"'), "the full chart must include the ten heavenly stems legend");
 assert(html.includes("天＝天盤干・地＝地盤干"), "the full chart must explain the compact heaven and earth plate labels");
+assert(html.includes("紅＝加分") && html.includes("綠＝扣分／凶"), "the full chart must explain stock-style gain and loss colors");
 assert(!/<main[^>]*aria-live=/i.test(html) && html.includes('class="score-orbit" role="status"'), "live announcements must stay scoped to result and palace detail");
 assert(html.includes("時家奇門・置閏・轉盤；分數只看鎖定宮。"), "visible method and scoring summary is required");
 assert(html.includes("超接置閏九日門檻") && html.includes("天禽寄坤"), "full chart must disclose the selected method variants");
@@ -52,7 +53,8 @@ assert(style.includes(".mobile-prototype"), "mobile prototype wrapper is require
 assert(style.includes("assets/paper-texture.webp"), "paper texture must be used by the UI");
 assert(style.includes(".score-orbit") && style.includes(".result-verdict"), "result-first visual hierarchy is required");
 assert(style.includes(".simple-chart-grid") && style.includes(".chart-palace") && style.includes(".palace-detail"), "mobile full-chart styles are required");
-assert(style.includes(".chart-stem-key") && style.includes(".chart-palace-stems"), "full-chart stem legend and palace stem styles are required");
+assert(style.includes(".chart-stem-key") && style.includes(".chart-palace-stem") && style.includes(".chart-palace-row-with-stem"), "full-chart right-side stem styles are required");
+assert(style.includes("--score-gain") && style.includes("--score-loss"), "full-chart gain and loss color tokens are required");
 assert(style.includes(":focus-visible"), "visible keyboard focus styles are required");
 assert(/\.rule-note\s*\{[^}]*font-size:\s*12px/s.test(style), "rule disclaimer must remain legible at 12px or larger");
 assert(fs.statSync(path.join(root, "assets", "paper-texture.webp")).size > 0, "paper texture asset is missing");
@@ -60,7 +62,7 @@ assert(fs.statSync(path.join(root, "assets", "paper-texture.webp")).size > 0, "p
 assert(engine.includes('app: "5.5"') && engine.includes('chart: "shijia-zhirun-zhuanpan.v2"'), "engine metadata should identify V5.5 Time-Qimen");
 assert(timeQimenSource.includes('const VERSION = "shijia-zhirun-zhuanpan.v2"'), "Time-Qimen engine version is required");
 assert(engine.includes('window.QIMEN_CASE_STORAGE_KEY = "qimen-jiugong-cases-v5"'), "case storage key must remain v5 compatible");
-assert(sw.includes("qimen-jiugong-v5-5-shijia-3"), "service worker cache name should be V5.5 Time-Qimen release");
+assert(sw.includes("qimen-jiugong-v5-5-shijia-4"), "service worker cache name should be V5.5 Time-Qimen release");
 assert(sw.includes(`timeqimen-engine.js?v=${assetVersion}`), "service worker must cache the Time-Qimen engine");
 assert(sw.includes('key.startsWith("qimen-jiugong-") && key !== CACHE_NAME'), "service worker must only delete its own old caches");
 assert(sw.includes(`app.js?v=${assetVersion}`), "service worker must cache the V5.4 app asset");
@@ -70,7 +72,7 @@ assert(app.includes('keys.filter(key=>key.startsWith("qimen-jiugong-"))'), "loca
 assert(app.includes('new URL(worker.scriptURL).pathname===localWorkerPath'), "localhost must only unregister this app's service worker path");
 assert(app.includes("健康、法律與財務問題，請以專業判斷為準。"), "high-risk topics must always show a professional-advice reminder");
 assert(app.includes("function renderSimpleChart()") && app.includes("function inspectSimplePalace(number)"), "full-chart rendering and palace inspection are required");
-assert(app.includes('class="chart-palace-stems"') && app.includes("天盤干${topText}") && app.includes("地盤干${bottomText}"), "every palace cell must render and announce heaven and earth plate stems");
+assert(app.includes('class="chart-palace-stem"') && app.includes('class="chart-palace-row chart-palace-row-with-stem"') && app.includes("天盤干${topText}") && app.includes("地盤干${bottomText}"), "every palace cell must render right-side heaven and earth plate stems and announce them");
 assert(!app.includes("<span>神</span>") && !app.includes("<span>星</span>") && !app.includes("<span>門</span>"), "compact palace cells should show values without redundant category labels");
 assert(app.includes('selectedNum===5') && app.includes("報數 5 → 取"), "the full chart must explain the 5-to-2 lock mapping");
 assert(app.includes("history.pushState") && app.includes('addEventListener("popstate"'), "mobile browser back must return from chart to result");
@@ -85,6 +87,10 @@ assert(manifest.description.includes("分數") && manifest.description.includes(
 assert(manifest.description.includes("完整九宮"), "manifest should describe the optional full chart");
 
 assert(core.lockedPalaceNumber(5) === 2 && core.lockedPalaceNumber(7) === 7, "number locking must remain compatible");
+assert(core.chartScoreState("door", "生門").className === "score-gain" && core.chartScoreState("door", "生門").value === 40, "positive chart symbols must use the gain color");
+assert(core.chartScoreState("star", "天芮").className === "score-loss", "direct-deny stars must use the loss color");
+assert(core.chartScoreState("stem", "庚").className === "score-loss", "direct-deny stems must use the loss color");
+assert(core.chartScoreState("star", "天英").className === "score-neutral", "unscored chart symbols must stay neutral");
 assert(core.grade(80).name === "大吉", "80-point grade boundary changed unexpectedly");
 assert(core.grade(60).name === "可用", "60-point grade boundary changed unexpectedly");
 assert(core.grade(30).name === "有風險", "30-point grade boundary changed unexpectedly");

@@ -561,9 +561,25 @@ function simpleStemValue(stems,meta=[]){
   if(!Array.isArray(stems)||!stems.length)return "—";
   return stems.map((stem,index)=>meta[index]?.role==="lodged"?`${stem}（寄）`:stem).join("、");
 }
-function compactStemValue(stems,meta=[]){
-  if(!Array.isArray(stems)||!stems.length)return "—";
-  return stems.map((stem,index)=>meta[index]?.role==="lodged"?`${stem}寄`:stem).join("・");
+function chartScoreState(type,symbol){
+  const value=contribution(type,symbol);
+  if(value>0)return {value,tone:"gain",className:"score-gain",label:`${symbol}：加 ${value} 分`};
+  if(value<0||DIRECT_DENY[type]?.has(symbol))return {value,tone:"loss",className:"score-loss",label:`${symbol}：扣分／直接判凶`};
+  return {value:0,tone:"neutral",className:"score-neutral",label:`${symbol}：中性`};
+}
+function chartScoreSymbolHTML(type,symbol,display=symbol){
+  const text=String(display||"—");
+  const state=symbol?chartScoreState(type,symbol):{className:"score-neutral",tone:"neutral",label:""};
+  const title=state.tone==="neutral"?"":` title="${escapeHTML(state.label)}"`;
+  return `<span class="chart-score-symbol ${state.className}"${title}>${escapeHTML(text)}</span>`;
+}
+function chartScoreListHTML(type,symbols,separator="、",meta=[]){
+  const items=(Array.isArray(symbols)?symbols:[symbols]).filter(Boolean);
+  if(!items.length)return chartScoreSymbolHTML(type,"","—");
+  return items.map((symbol,index)=>{
+    const display=`${symbol}${meta[index]?.role==="lodged"?"寄":""}`;
+    return chartScoreSymbolHTML(type,symbol,display);
+  }).join(`<span class="chart-symbol-separator">${escapeHTML(separator)}</span>`);
 }
 function simplePalaceTitle(p){return `${p.key}${CN_NUM[p.number]||p.number}宮`}
 function renderSimplePalaceDetail(p){
@@ -572,7 +588,7 @@ function renderSimplePalaceDetail(p){
   const locked=p.number===lockedPalaceNumber(selectedNum);
   const flags=(p.flags||[]);
   const flagTextHtml=flags.length
-    ?flags.map(flag=>`<span><strong>${escapeHTML(flag)}</strong>｜${escapeHTML(flagText(flag))}</span>`).join("<br>")
+    ?flags.map(flag=>`<span>${chartScoreSymbolHTML("flag",flag)}｜${escapeHTML(flagText(flag))}</span>`).join("<br>")
     :"無特殊標記";
   const centerNote=p.isCenter
     ?"轉盤法中宮不用；中宮干與天禽寄坤，隨天芮一起轉動。報數 5 一律取坤二宮。"
@@ -583,12 +599,12 @@ function renderSimplePalaceDetail(p){
       <span>${locked?"本次鎖定":"查看中"}</span>
     </div>
     <div class="palace-detail-grid">
-      <div class="palace-detail-item"><span>八神</span><strong>${escapeHTML(simplePalaceValue(p.god))}</strong></div>
-      <div class="palace-detail-item"><span>九星</span><strong>${escapeHTML(simpleStarValue(p))}</strong></div>
-      <div class="palace-detail-item"><span>八門</span><strong>${escapeHTML(simplePalaceValue(p.door))}</strong></div>
+      <div class="palace-detail-item"><span>八神</span><strong>${chartScoreListHTML("god",p.god,"")}</strong></div>
+      <div class="palace-detail-item"><span>九星</span><strong>${chartScoreListHTML("star",p.stars?.length?p.stars:p.star)}</strong></div>
+      <div class="palace-detail-item"><span>八門</span><strong>${chartScoreListHTML("door",p.door,"")}</strong></div>
       <div class="palace-detail-item"><span>宮位</span><strong>${escapeHTML(p.key)}${p.number}｜${escapeHTML(PALACE_DIR[p.key]||"中央")}</strong></div>
-      <div class="palace-detail-item"><span>天盤干</span><strong>${escapeHTML(simpleStemValue(p.top))}</strong></div>
-      <div class="palace-detail-item"><span>地盤干</span><strong>${escapeHTML(simpleStemValue(p.bottom,p.bottomMeta))}</strong></div>
+      <div class="palace-detail-item"><span>天盤干</span><strong>${chartScoreListHTML("stem",p.top,"、")}</strong></div>
+      <div class="palace-detail-item"><span>地盤干</span><strong>${chartScoreListHTML("stem",p.bottom,"、",p.bottomMeta)}</strong></div>
     </div>
     <p class="palace-detail-flags"><strong>特殊象</strong><br>${flagTextHtml}</p>
     <p class="palace-detail-note">${escapeHTML(centerNote)}</p>`;
@@ -625,21 +641,32 @@ function renderSimpleChart(){
   grid.innerHTML=chart.palaces.map(p=>{
     const locked=p.number===lockedNumber;
     const selected=p.number===inspectedPalaceNum;
-    const flags=(p.flags||[]).join("、");
+    const stars=p.stars?.length?p.stars:[p.star].filter(Boolean);
+    const flags=p.flags||[];
     const topText=simpleStemValue(p.top);
     const bottomText=simpleStemValue(p.bottom,p.bottomMeta);
-    const label=`查看${simplePalaceTitle(p)}，八神${simplePalaceValue(p.god)}，九星${simpleStarValue(p)}，八門${simplePalaceValue(p.door)}，天盤干${topText}，地盤干${bottomText}`;
+    const scoreHints=[
+      chartScoreState("god",p.god),
+      ...stars.map(star=>chartScoreState("star",star)),
+      chartScoreState("door",p.door),
+      ...(p.top||[]).map(stem=>chartScoreState("stem",stem)),
+      ...(p.bottom||[]).map(stem=>chartScoreState("stem",stem)),
+      ...flags.map(flag=>chartScoreState("flag",flag))
+    ].filter(item=>item.tone!=="neutral").map(item=>item.label);
+    const label=`查看${simplePalaceTitle(p)}，八神${simplePalaceValue(p.god)}，九星${simpleStarValue(p)}，八門${simplePalaceValue(p.door)}，天盤干${topText}，地盤干${bottomText}${scoreHints.length?`，計分：${scoreHints.join("；")}`:""}`;
     return `<button type="button" class="chart-palace ${p.isCenter?"is-center":""} ${locked?"is-locked":""} ${selected?"is-inspected":""}" data-palace-number="${p.number}" aria-label="${escapeHTML(label)}" aria-pressed="${selected?"true":"false"}">
       ${locked?`<span class="chart-lock-badge">本次鎖定</span>`:""}
       <div class="chart-palace-head"><strong>${escapeHTML(`${p.key}${CN_NUM[p.number]||p.number}`)}</strong><span>${escapeHTML(PALACE_DIR[p.key]||"中央")}</span></div>
-      <div class="chart-palace-row"><b>${escapeHTML(simplePalaceValue(p.god))}</b></div>
-      <div class="chart-palace-row"><b>${escapeHTML(simpleStarValue(p))}</b></div>
-      <div class="chart-palace-row"><b>${escapeHTML(simplePalaceValue(p.door))}</b></div>
-      <div class="chart-palace-stems">
-        <span><small>天</small><b title="天盤干 ${escapeHTML(topText)}">${escapeHTML(compactStemValue(p.top))}</b></span>
-        <span><small>地</small><b title="地盤干 ${escapeHTML(bottomText)}">${escapeHTML(compactStemValue(p.bottom,p.bottomMeta))}</b></span>
+      <div class="chart-palace-row"><b>${chartScoreListHTML("god",p.god,"")}</b></div>
+      <div class="chart-palace-row chart-palace-row-with-stem">
+        <b class="chart-palace-symbol">${chartScoreListHTML("star",stars)}</b>
+        <span class="chart-palace-stem"><small>天</small><span>${chartScoreListHTML("stem",p.top,"・")}</span></span>
       </div>
-      <div class="chart-palace-flags">${escapeHTML(flags)}</div>
+      <div class="chart-palace-row chart-palace-row-with-stem">
+        <b class="chart-palace-symbol">${chartScoreListHTML("door",p.door,"")}</b>
+        <span class="chart-palace-stem"><small>地</small><span>${chartScoreListHTML("stem",p.bottom,"・",p.bottomMeta)}</span></span>
+      </div>
+      <div class="chart-palace-flags">${flags.length?chartScoreListHTML("flag",flags):""}</div>
     </button>`;
   }).join("");
   renderSimplePalaceDetail(inspected);
@@ -1001,7 +1028,7 @@ function registerServiceWorker(){
     )).catch(()=>{});
   }
   if(!isLocal&&"serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.5-shijia-3").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.5-shijia-4").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -3467,6 +3494,7 @@ if(typeof module!=="undefined"){
     buildPersonalCalibrationModel,
     buildPersonalCalibrationReminder,
     buildPersonalCalibrationReportText,
+    chartScoreState,
     solarToLunar,
     isSupportedAppDate
   };

@@ -7,6 +7,8 @@
   --olive-dark: #252b23;
   --line: #b9b29f;
   --risk: #9e4d38;
+  --score-gain: #b42318;
+  --score-loss: #0b6b43;
   --display: "Noto Serif TC", "Source Han Serif TC", "Songti TC", PMingLiU, serif;
   --body: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
 }
@@ -485,11 +487,17 @@ summary:focus-visible {
 
 .chart-stem-key strong {
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
   font-family: var(--display);
   font-size: 13px;
-  letter-spacing: .11em;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
+
+.chart-stem-key strong b,
+.chart-stem-key small b { font: inherit; font-weight: 800; }
 
 .chart-stem-key small {
   grid-column: 1 / -1;
@@ -509,7 +517,7 @@ summary:focus-visible {
 .chart-palace {
   position: relative;
   min-width: 0;
-  min-height: 166px;
+  min-height: 150px;
   padding: 8px 7px 7px;
   display: flex;
   flex-direction: column;
@@ -579,36 +587,59 @@ summary:focus-visible {
   white-space: nowrap;
 }
 
-.chart-palace-stems {
-  min-width: 0;
-  padding-top: 4px;
-  display: grid;
-  gap: 2px;
-  border-top: 1px solid rgba(104, 112, 86, .2);
-}
-
-.chart-palace-stems > span {
+.chart-palace-row-with-stem {
   min-width: 0;
   display: grid;
-  grid-template-columns: 13px minmax(0, 1fr);
-  align-items: baseline;
-  gap: 2px;
-  line-height: 1.2;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px;
+  min-height: 30px;
 }
 
-.chart-palace-stems small {
+.chart-palace-row-with-stem > b {
+  overflow: visible;
+  font-size: 13px;
+  line-height: 1.16;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.chart-palace-stem {
+  min-width: 0;
+  max-width: 48px;
+  padding-left: 4px;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 1px;
+  border-left: 1px solid rgba(104, 112, 86, .22);
+  line-height: 1.15;
+}
+
+.chart-palace-stem small {
   color: var(--olive-dark);
   font-size: 9px;
   font-weight: 850;
 }
 
-.chart-palace-stems b {
+.chart-palace-stem > span {
   min-width: 0;
   font-family: var(--display);
   font-size: 12px;
   font-weight: 800;
+  text-align: right;
   overflow-wrap: anywhere;
 }
+
+.chart-score-symbol { color: var(--ink); }
+.chart-score-symbol.score-gain,
+.score-gain { color: var(--score-gain); }
+.chart-score-symbol.score-loss,
+.score-loss { color: var(--score-loss); }
+.chart-score-symbol.score-neutral,
+.score-neutral { color: var(--ink); }
+.chart-symbol-separator { color: var(--muted); }
 
 .chart-palace-flags {
   min-height: 13px;
@@ -746,7 +777,7 @@ summary:focus-visible {
 @media (max-width: 370px) {
   .chart-screen { padding-inline: 12px; }
   .simple-chart-grid { gap: 5px; }
-  .chart-palace { min-height: 158px; padding-inline: 6px; }
+  .chart-palace { min-height: 148px; padding-inline: 6px; }
   .chart-palace.is-locked { padding-inline: 5px; }
   .chart-palace-head strong { font-size: 17px; }
   .chart-palace-row > b { font-size: 14px; }

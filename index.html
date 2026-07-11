@@ -7,8 +7,8 @@
   <meta name="description" content="想一件事，選一個數字，以時家奇門置閏轉盤查看分數、吉凶與完整九宮。">
   <meta name="theme-color" content="#f6f1e7">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.5-shijia-3">
-  <link rel="stylesheet" href="style.css?v=5.5-shijia-3">
+  <link rel="manifest" href="manifest.webmanifest?v=5.5-shijia-4">
+  <link rel="stylesheet" href="style.css?v=5.5-shijia-4">
 </head>
 <body>
   <main class="mobile-prototype">
@@ -95,8 +95,19 @@
 
       <div class="chart-stem-key" aria-label="十天干與天地盤干圖例">
         <span>十天干</span>
-        <strong>甲 乙 丙 丁 戊 己 庚 辛 壬 癸</strong>
-        <small>宮格內：天＝天盤干・地＝地盤干</small>
+        <strong aria-label="甲乙丙丁戊己庚辛壬癸">
+          <b class="chart-score-symbol score-neutral">甲</b>
+          <b class="chart-score-symbol score-gain">乙</b>
+          <b class="chart-score-symbol score-gain">丙</b>
+          <b class="chart-score-symbol score-gain">丁</b>
+          <b class="chart-score-symbol score-gain">戊</b>
+          <b class="chart-score-symbol score-neutral">己</b>
+          <b class="chart-score-symbol score-loss">庚</b>
+          <b class="chart-score-symbol score-neutral">辛</b>
+          <b class="chart-score-symbol score-neutral">壬</b>
+          <b class="chart-score-symbol score-neutral">癸</b>
+        </strong>
+        <small>天＝天盤干・地＝地盤干・<b class="score-gain">紅＝加分</b>・<b class="score-loss">綠＝扣分／凶</b></small>
       </div>
 
       <div class="simple-chart-grid" id="simplePalaceGrid" aria-label="九宮完整盤面"></div>
@@ -116,8 +127,8 @@
     </div>
   </main>
 
-  <script src="engine.js?v=5.5-shijia-3" defer></script>
-  <script src="timeqimen-engine.js?v=5.5-shijia-3" defer></script>
-  <script src="app.js?v=5.5-shijia-3" defer></script>
+  <script src="engine.js?v=5.5-shijia-4" defer></script>
+  <script src="timeqimen-engine.js?v=5.5-shijia-4" defer></script>
+  <script src="app.js?v=5.5-shijia-4" defer></script>
 </body>
 </html>
