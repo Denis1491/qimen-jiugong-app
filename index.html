@@ -2,214 +2,91 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>九宮奇門</title>
-  <meta name="description" content="九宮奇門：輸入問題、選 1-9、查看九宮盤與解盤報告。">
-  <meta name="theme-color" content="#2f332b">
+  <meta name="description" content="想一件事，選一個數字，查看目前規則下的分數與吉凶傾向。">
+  <meta name="theme-color" content="#f6f1e7">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.3-personal-calibration-1">
-  <link rel="stylesheet" href="style.css?v=5.3-personal-calibration-1">
+  <link rel="manifest" href="manifest.webmanifest?v=5.4-simple-result-first-4">
+  <link rel="stylesheet" href="style.css?v=5.4-simple-result-first-4">
 </head>
 <body>
-<div id="onboardingMount"></div>
-<div class="shell">
-  <header class="hero">
-    <div class="hero-main card">
-      <h1>九宮奇門</h1>
-      <p class="hero-copy"><strong>先問清楚，再看盤。</strong><span>輸入一件具體事情，App 會先幫你判斷題型、風險與建議問法，再排盤給行動建議。</span></p>
-      <div class="btn-row">
-        <button class="btn btn-primary nav-btn" data-view="ask" type="button">問事</button>
-        <button class="btn btn-ghost nav-btn" data-view="chart" type="button">看盤</button>
-        <button class="btn btn-ghost nav-btn" data-view="case" type="button">案例</button>
-        <button class="btn btn-soft mode-toggle active" data-user-mode="novice" type="button">新手模式</button>
-        <button class="btn btn-ghost mode-toggle" data-user-mode="expert" type="button">專家模式</button>
-        <button class="btn btn-soft" id="quickNow">使用現在時間</button>
-        <button class="btn btn-ghost" id="quickExample">範例</button>
-      </div>
-    </div>
-    <aside class="hero-side card">
-      <div class="metric"><div class="label">鎖定</div><div class="value" id="metricLock">未選數</div></div>
-      <div class="metric"><div class="label">分數</div><div class="value" id="metricScore">—</div></div>
-      <div class="metric"><div class="label">全盤</div><div class="value" id="metricOverall">—</div></div>
-      <div class="metric metric-wide"><div class="label">規則</div><div class="value" id="metricRules">App V5.3｜術法規則 V5.0 待校準</div></div>
-    </aside>
-  </header>
+  <main class="mobile-prototype" aria-live="polite">
+    <section class="simple-screen simple-ask active" id="simpleAskView" aria-labelledby="askTitle">
+      <header class="ask-header">
+        <p class="eyebrow">大道至簡</p>
+        <h1 id="askTitle">九宮奇門</h1>
+        <p>想一件具體的事，憑直覺選一個數字。</p>
+      </header>
 
-  <section class="view active" id="viewAsk" data-view-panel="ask">
-  <div id="pendingReviewBannerAsk"></div>
-  <section class="panel card controls ask-card">
-    <div class="section-title">
-      <div><h2>你想問什麼？</h2><small>寫一件具體事情，先讓 App 幫你拆問題。</small></div>
-    </div>
-    <div class="field question-field"><label for="questionText">想問的事情</label><textarea id="questionText" placeholder="例如：今天要不要主動聯絡對方？ / 這次合作要不要先小做？ / 這筆錢今天能不能投入？"></textarea></div>
-    <div class="warn" id="inquiryHint">正式問事：請先默念問題，憑直覺選 1-9。鎖定後再揭盤，避免被盤面吉凶影響選擇。</div>
-    <div class="diagnosis-box" id="questionDiagnosis">
-      <div><strong>問題診斷</strong><span>先輸入問題，App 會協助判斷題型與風險。</span></div>
-    </div>
-    <div class="btn-row diagnosis-actions">
-      <button class="btn btn-primary" id="applyAppAdvice" type="button">套用 App 建議</button>
-      <button class="btn btn-soft minor-cta" id="applyDiagnosisQtype" type="button">只套用用途</button>
-      <button class="btn btn-soft minor-cta" id="applyQuestionRewrite" type="button">只套用問法</button>
-      <button class="btn btn-soft minor-cta" id="applyDecisionOptions" type="button">產生比較選項</button>
-    </div>
-    <div class="compare-panel" id="comparePanel" hidden>
-      <div class="compare-grid">
-        <div class="field"><label for="optionAName">選項 A</label><input id="optionAName" placeholder="例如：留在原工作"></div>
-        <div class="field"><label for="optionBName">選項 B</label><input id="optionBName" placeholder="例如：接受新工作"></div>
-        <div class="field"><label for="optionCName">選項 C</label><input id="optionCName" placeholder="例如：先做小測試"></div>
-        <div class="field"><label for="optionDName">選項 D</label><input id="optionDName" placeholder="例如：暫時不動"></div>
-      </div>
-      <div class="compare-picker" id="comparePicker">
-        <button class="compare-side active" type="button" data-side="A">替 A 選數：<strong id="compareANum">未選</strong></button>
-        <button class="compare-side" type="button" data-side="B">替 B 選數：<strong id="compareBNum">未選</strong></button>
-        <button class="compare-side" type="button" data-side="C">替 C 選數：<strong id="compareCNum">未選</strong></button>
-        <button class="compare-side" type="button" data-side="D">替 D 選數：<strong id="compareDNum">未選</strong></button>
-      </div>
-    </div>
-    <div class="section-title compact-title"><div><h2>選數字</h2><small>選 1-9 即可。</small></div></div>
-    <div class="num-pad" id="numPad"></div>
-    <div class="primary-action-row"><button class="btn btn-primary" id="buildBtn">開始排盤</button><button class="btn btn-ghost" id="resetInquiryAsk" type="button">重新問事</button></div>
-    <details class="advanced expert-settings">
-      <summary>進階設定 / 專家設定</summary>
-      <div class="advanced-grid">
-        <div class="field"><label for="inquiryMode">問事模式</label><select id="inquiryMode"><option value="formal">正式問事</option><option value="study">學習模式</option></select></div>
-        <div class="field"><label for="selectionMode">問法</label><select id="selectionMode"><option value="single">單選問事</option><option value="compare">複選比較</option></select></div>
-        <div class="field"><label for="dt">起盤時間</label><input type="datetime-local" id="dt"></div>
-        <div class="field"><label for="qtype">用途</label><select id="qtype"><option>今日運勢</option><option>工作</option><option>財運</option><option>感情</option><option>合作</option><option>健康</option><option>風水</option><option>決策</option></select></div>
-        <div class="field"><label for="doorMode">八門排法</label><select id="doorMode"><option value="lock">九宮鎖單宮校準</option><option value="star">星門同轉</option><option value="classic">傳統值使門</option></select></div>
-        <div class="field"><label for="ziChange">晚子時</label><select id="ziChange"><option value="false">23:00 不換日</option><option value="true">23:00 換隔日</option></select></div>
-        <div class="action-field"><div class="btn-row"><button class="btn btn-ghost" id="printBtnAsk">列印/PDF</button></div></div>
-      </div>
-    </details>
-    <div class="note" id="autoNote">尚未排盤。</div>
-  </section>
-  </section>
+      <div class="simple-form">
+        <label class="field-label" for="questionText">想問的事情</label>
+        <textarea id="questionText" rows="2" placeholder="例如：這次合作適合現在推進嗎？" autocomplete="off"></textarea>
 
-  <section class="view" id="viewChart" data-view-panel="chart">
-  <section class="panel card step-actions">
-    <div class="section-title"><div><h2>盤面與分析</h2><small>重點先看結果，細節點開查看。</small></div></div>
-    <div class="btn-row">
-      <button class="btn btn-ghost nav-btn" data-view="ask" type="button">返回問事</button>
-      <button class="btn btn-primary nav-btn" data-view="case" type="button">前往儲存</button>
-      <button class="btn btn-soft" id="resetInquiryChart" type="button">重新問事</button>
-      <button class="btn btn-ghost" id="printBtnChart">列印/PDF</button>
-    </div>
-  </section>
-  <section class="panel card controls">
-    <div class="section-title"><div><h2>所選宮位</h2><small>預設收合，點開看完整符號。</small></div></div>
-    <details class="info-fold">
-      <summary>展開所選宮位</summary>
-      <div class="locked-palace-panel" id="lockedPalacePanel">
-        <div class="locked-empty">請先起盤，再選一個數字。</div>
-      </div>
-    </details>
-  </section>
+        <label class="field-label" for="qtype">問事類型</label>
+        <select id="qtype">
+          <option>今日運勢</option>
+          <option>工作</option>
+          <option>財運</option>
+          <option>感情</option>
+          <option>合作</option>
+          <option>健康</option>
+          <option>風水</option>
+          <option selected>決策</option>
+        </select>
 
-  <main class="app-main">
-    <section class="chart-card card">
-      <div class="section-title"><div><h2>九宮盤面</h2><small>起盤資料與完整盤面預設收合。</small></div><span class="score-pill score-mid" id="chartBadge">未排盤</span></div>
-      <details class="info-fold">
-        <summary>展開起盤資料與九宮盤</summary>
-        <div class="meta-grid" id="metaGrid"></div>
-        <div class="palace-frame"><div class="palace-grid" id="palaceGrid"></div></div>
-      </details>
+        <div class="number-heading">
+          <span class="field-label">選一個數字</span>
+          <span>1–9</span>
+        </div>
+        <div class="num-pad" id="numPad" aria-label="選擇一到九的數字"></div>
+
+        <details class="time-adjust">
+          <summary>時間：<span id="timeSummary">現在</span><span aria-hidden="true">（修改）</span></summary>
+          <label class="sr-only" for="dt">起盤時間</label>
+          <input type="datetime-local" id="dt">
+        </details>
+
+        <p class="form-error" id="simpleFormError" role="alert"></p>
+        <button class="primary-button" id="buildBtn" type="button">算分數與吉凶</button>
+      </div>
+
+      <p class="rule-note">術法規則待校準，分數僅表示目前規則下的傾向。</p>
     </section>
 
-    <aside class="result-card card">
-      <div class="section-title"><div><h2>結果</h2><small id="resultSub">尚未選數</small></div></div>
-      <div id="decisionBrief" class="decision-brief empty">排盤後會先給你一張可執行的決策卡。</div>
-      <div id="personalCalibrationReminder" class="personal-calibration-reminder"></div>
-      <div id="shareReviewPanel" class="share-review-panel"></div>
-      <div id="actionChecklist" class="action-checklist"></div>
-      <div class="result-headline" id="resultHeadline">先起盤並選數。</div>
-      <div class="big-score"><span class="num" id="scoreNum">—</span><span class="suffix">/100</span></div>
-      <div class="grade" id="gradeText">未鎖定</div>
-      <div class="bar"><span id="scoreBar"></span></div>
-      <div class="tabs" id="reasonTabs"></div>
-      <details class="info-fold">
-        <summary>查看解盤依據</summary>
-        <div class="list" id="resultList"></div>
-      </details>
-      <hr style="border:0;border-top:1px solid #e4d2bd;margin:16px 0">
-      <div class="btn-row">
-        <button class="btn btn-teal" id="copyReport">複製報告</button>
-        <button class="btn btn-primary" id="copyBrief">複製簡短建議</button>
-        <button class="btn btn-soft" id="downloadTxt">下載文字</button>
-        <button class="btn btn-ghost" id="exportJson">匯出盤面 JSON</button>
-        <button class="btn btn-ghost" id="importJsonBtn">匯入 JSON</button>
-        <input type="file" id="importJsonInput" accept="application/json,.json" hidden>
+    <section class="simple-screen simple-result" id="simpleResultView" aria-labelledby="resultTitle" hidden>
+      <header class="result-header">
+        <p class="brand" id="resultTitle">九宮奇門</p>
+        <h2 id="resultQuestion">—</h2>
+        <p class="result-context" id="resultContext">—</p>
+      </header>
+
+      <div class="score-orbit" aria-label="分數">
+        <strong id="resultScore">—</strong>
+        <span>/ 100</span>
       </div>
-    </aside>
+
+      <p class="result-verdict" id="resultVerdict">—</p>
+      <div class="result-divider" aria-hidden="true"></div>
+      <p class="result-message" id="resultMessage">—</p>
+      <p class="result-safety" id="resultSafety" hidden></p>
+
+      <div class="result-actions">
+        <button class="primary-button" id="resetBtn" type="button">再算一次</button>
+        <p class="rule-note">術法規則待校準，分數僅表示目前規則下的傾向。</p>
+      </div>
+    </section>
+
+    <div class="engine-controls" hidden aria-hidden="true">
+      <input id="inquiryMode" value="formal">
+      <input id="selectionMode" value="single">
+      <select id="doorMode"><option value="lock" selected>九宮鎖單宮校準</option></select>
+      <select id="ziChange"><option value="false" selected>23:00 不換日</option></select>
+      <div id="autoNote"></div>
+    </div>
   </main>
 
-  <section class="panel card" style="margin-top:18px">
-    <div class="section-title">
-      <div><h2>報告</h2><small>可切換閱讀深度。</small></div>
-      <div class="report-tools">
-        <button class="report-mode active" type="button" data-report-mode="simple">簡略報告</button>
-        <button class="report-mode" type="button" data-report-mode="detail">詳細報告</button>
-        <button class="report-mode" type="button" data-report-mode="teacher">老師教學</button>
-      </div>
-    </div>
-    <details class="info-fold report-fold">
-      <summary>展開文字報告</summary>
-      <div class="report" id="reportBox">尚未產生報告。</div>
-    </details>
-  </section>
-  </section>
-
-  <section class="view" id="viewCase" data-view-panel="case">
-  <section class="panel card step-actions">
-    <div class="section-title"><div><h2>儲存盤面</h2><small>方便日後對照實際結果。</small></div></div>
-    <div class="btn-row">
-      <button class="btn btn-ghost nav-btn" data-view="ask" type="button">再問一次</button>
-      <button class="btn btn-ghost nav-btn" data-view="chart" type="button">返回看盤</button>
-    </div>
-  </section>
-
-  <section class="panel card">
-    <div class="section-title">
-      <div><h2>案例庫</h2><small>儲存、回看、校盤。</small></div>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="saveCase">儲存本次</button>
-        <button class="btn btn-teal" id="updateCaseResult">回填結果</button>
-        <button class="btn btn-soft" id="copyCaseReviewChecklist">複製回驗清單</button>
-        <button class="btn btn-soft" id="copyFilteredCaseReviewChecklist">複製目前清單</button>
-        <button class="btn btn-soft" id="copyCaseCalibrationSummary">複製校準摘要</button>
-        <button class="btn btn-soft" id="copyPersonalCalibrationReport">複製個人校準報告</button>
-        <button class="btn btn-soft" id="exportCases">匯出案例</button>
-        <button class="btn btn-soft" id="exportCasesCsv">匯出回驗 CSV</button>
-        <button class="btn btn-soft" id="exportFilteredCasesCsv">匯出目前 CSV</button>
-        <a class="btn btn-soft" href="sample-data/qimen_v5_100_synthetic_cases.json?v=5.3-personal-calibration-1" download>下載示範100筆</a>
-        <button class="btn btn-ghost" id="clearCases">清空</button>
-      </div>
-    </div>
-    <div class="case-grid">
-      <div class="field"><label for="caseTitle">案例名稱</label><input id="caseTitle" placeholder="例如：工作面談"></div>
-      <div class="field"><label for="caseOutcome">實際結果</label><input id="caseOutcome" placeholder="事後補填，方便校盤"></div>
-      <div class="field"><label for="caseSearch">搜尋</label><input id="caseSearch" placeholder="搜尋名稱、用途、宮位、結果"></div>
-      <div class="field"><label for="caseReviewFilter">回驗篩選</label><select id="caseReviewFilter"><option value="all">全部案例</option><option value="priority">優先回驗</option><option value="unreviewed">待回填結果</option><option value="incomplete">待補完整</option><option value="complete">已完整</option><option value="low-accuracy">低分案例</option><option value="compare-incomplete">比較題待補</option><option value="compare-chosen-mismatch">推薦未採用</option><option value="compare-hit-mismatch">推薦未應驗</option></select></div>
-      <div class="field"><label for="caseAccuracy">準確度</label><select id="caseAccuracy"><option value="">未回填</option><option value="5">5 星，很準</option><option value="4">4 星，大致準</option><option value="3">3 星，一半一半</option><option value="2">2 星，偏不準</option><option value="1">1 星，不準</option></select></div>
-      <div class="field"><label for="caseHitArea">應在哪個部分</label><select id="caseHitArea"><option value="">未分類</option><option>財</option><option>工作</option><option>感情</option><option>口舌</option><option>健康</option><option>風水</option><option>其他</option></select></div>
-      <div class="field"><label for="caseCompareChosen">比較題實際採用</label><select id="caseCompareChosen"><option value="">未回填</option><option value="A">選項 A</option><option value="B">選項 B</option><option value="C">選項 C</option><option value="D">選項 D</option><option value="none">沒有採用</option><option value="unclear">看不出來</option></select></div>
-      <div class="field"><label for="caseCompareHit">比較題實際應驗</label><select id="caseCompareHit"><option value="">未回填</option><option value="A">選項 A</option><option value="B">選項 B</option><option value="C">選項 C</option><option value="D">選項 D</option><option value="none">都未應驗</option><option value="mixed">混合應驗</option><option value="unclear">仍待觀察</option></select></div>
-      <div class="field"><label for="caseNotes">回驗備註</label><input id="caseNotes" placeholder="例如：應在口舌，不是財務"></div>
-      <div class="field"><label for="caseCompareNote">比較回驗備註</label><input id="caseCompareNote" placeholder="例如：最後採用 B；A 的口舌風險也有出現"></div>
-      <div class="field"><label for="caseAfterAction">是否照建議做</label><input id="caseAfterAction" placeholder="例如：有照做，先傳短訊息；或沒有照做"></div>
-      <div class="field"><label for="caseVerifiedSymbol">哪個象應驗</label><input id="caseVerifiedSymbol" placeholder="例如：驚門應在口舌；空亡應在延遲"></div>
-      <div class="field"><label for="caseRiskReduced">風險是否降低</label><select id="caseRiskReduced"><option value="">未回填</option><option value="yes">有降低</option><option value="partial">部分降低</option><option value="no">沒有降低</option><option value="unknown">看不出來</option></select></div>
-      <div class="field"><label for="caseDeviationResult">偏離建議後結果</label><input id="caseDeviationResult" placeholder="例如：沒有照做，結果口舌放大；或仍然沒事"></div>
-      <div class="field"><label for="caseCalibration">校準結論</label><select id="caseCalibration"><option value="">未回填</option><option value="accurate">判斷準</option><option value="delayed">只是延遲</option><option value="wrong-area">應事不同</option><option value="too-strong">說得太死</option><option value="downgrade">需改成風險降級</option><option value="unclear">仍待觀察</option></select></div>
-    </div>
-    <div class="case-coach-hint" id="caseCoachHint"></div>
-    <div id="pendingReviewBannerCase"></div>
-    <div class="case-stats" id="caseStats"></div>
-    <div class="case-list" id="caseList"></div>
-  </section>
-  </section>
-</div>
-<script src="engine.js?v=5.3-personal-calibration-1" defer></script>
-<script src="qimen_soul_copy_bank.js?v=5.3-personal-calibration-1" defer></script>
-<script src="app.js?v=5.3-personal-calibration-1" defer></script>
+  <script src="engine.js?v=5.4-simple-result-first-4" defer></script>
+  <script src="app.js?v=5.4-simple-result-first-4" defer></script>
 </body>
 </html>

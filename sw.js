@@ -1,13 +1,12 @@
-const CACHE_NAME = "qimen-jiugong-v5-3-personal-calibration-1";
+const CACHE_NAME = "qimen-jiugong-v5-4-simple-result-first-4";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=5.3-personal-calibration-1",
-  "./engine.js?v=5.3-personal-calibration-1",
-  "./qimen_soul_copy_bank.js?v=5.3-personal-calibration-1",
-  "./app.js?v=5.3-personal-calibration-1",
-  "./manifest.webmanifest?v=5.3-personal-calibration-1",
-  "./sample-data/qimen_v5_100_synthetic_cases.json?v=5.3-personal-calibration-1",
+  "./style.css?v=5.4-simple-result-first-4",
+  "./engine.js?v=5.4-simple-result-first-4",
+  "./app.js?v=5.4-simple-result-first-4",
+  "./manifest.webmanifest?v=5.4-simple-result-first-4",
+  "./assets/paper-texture.webp",
   "./rules/rules.json",
   "./rules/lock-palace.json",
   "./rules/scoring.json",
@@ -22,7 +21,9 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key.startsWith("qimen-jiugong-") && key !== CACHE_NAME).map(key => caches.delete(key))
+    ))
   );
   self.clients.claim();
 });

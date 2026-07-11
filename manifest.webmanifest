@@ -1,11 +1,11 @@
 {
   "name": "九宮奇門",
   "short_name": "九宮奇門",
-  "description": "輸入問題、選 1-9、查看九宮盤與解盤報告。",
+  "description": "想一件事，選一個數字，查看分數與吉凶傾向。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3efe5",
-  "theme_color": "#2f332b",
+  "background_color": "#f6f1e7",
+  "theme_color": "#f6f1e7",
   "lang": "zh-Hant"
 }
