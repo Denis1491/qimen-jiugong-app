@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "test": "node tests/run-tests.js"
+    "test": "node tests/timeqimen-engine.test.js && node tests/run-tests.js"
   }
 }

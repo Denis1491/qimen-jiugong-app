@@ -1,5 +1,6 @@
 window.QIMEN_RULE_VERSION = {
-  app: "5.4",
+  app: "5.5",
+  chart: "shijia-zhirun-zhuanpan.v2",
   lock: "lock-palace.v5.0",
   scoring: "scoring.v5.0",
   qtype: "qtype-rules.v5.0 待校準",

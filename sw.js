@@ -1,11 +1,12 @@
-const CACHE_NAME = "qimen-jiugong-v5-4-simple-result-first-4";
+const CACHE_NAME = "qimen-jiugong-v5-5-shijia-2";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=5.4-simple-result-first-4",
-  "./engine.js?v=5.4-simple-result-first-4",
-  "./app.js?v=5.4-simple-result-first-4",
-  "./manifest.webmanifest?v=5.4-simple-result-first-4",
+  "./style.css?v=5.5-shijia-2",
+  "./engine.js?v=5.5-shijia-2",
+  "./timeqimen-engine.js?v=5.5-shijia-2",
+  "./app.js?v=5.5-shijia-2",
+  "./manifest.webmanifest?v=5.5-shijia-2",
   "./assets/paper-texture.webp",
   "./rules/rules.json",
   "./rules/lock-palace.json",

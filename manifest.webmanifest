@@ -1,7 +1,7 @@
 {
   "name": "九宮奇門",
   "short_name": "九宮奇門",
-  "description": "想一件事，選一個數字，查看分數與吉凶傾向。",
+  "description": "想一件事，選一個數字，以時家奇門置閏轉盤查看分數、吉凶與完整九宮。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

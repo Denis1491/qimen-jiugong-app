@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>九宮奇門</title>
-  <meta name="description" content="想一件事，選一個數字，查看目前規則下的分數與吉凶傾向。">
+  <meta name="description" content="想一件事，選一個數字，以時家奇門置閏轉盤查看分數、吉凶與完整九宮。">
   <meta name="theme-color" content="#f6f1e7">
   <link rel="icon" href="data:,">
-  <link rel="manifest" href="manifest.webmanifest?v=5.4-simple-result-first-4">
-  <link rel="stylesheet" href="style.css?v=5.4-simple-result-first-4">
+  <link rel="manifest" href="manifest.webmanifest?v=5.5-shijia-2">
+  <link rel="stylesheet" href="style.css?v=5.5-shijia-2">
 </head>
 <body>
-  <main class="mobile-prototype" aria-live="polite">
+  <main class="mobile-prototype">
     <section class="simple-screen simple-ask active" id="simpleAskView" aria-labelledby="askTitle">
       <header class="ask-header">
         <p class="eyebrow">大道至簡</p>
@@ -42,16 +42,16 @@
         <div class="num-pad" id="numPad" aria-label="選擇一到九的數字"></div>
 
         <details class="time-adjust">
-          <summary>時間：<span id="timeSummary">現在</span><span aria-hidden="true">（修改）</span></summary>
+          <summary>台北時間：<span id="timeSummary">現在</span><span aria-hidden="true">（修改）</span></summary>
           <label class="sr-only" for="dt">起盤時間</label>
-          <input type="datetime-local" id="dt">
+          <input type="datetime-local" id="dt" min="1900-01-31T00:00" max="2050-12-31T23:59">
         </details>
 
         <p class="form-error" id="simpleFormError" role="alert"></p>
         <button class="primary-button" id="buildBtn" type="button">算分數與吉凶</button>
       </div>
 
-      <p class="rule-note">術法規則待校準，分數僅表示目前規則下的傾向。</p>
+      <p class="rule-note">時家奇門・置閏・轉盤；分數只看鎖定宮。</p>
     </section>
 
     <section class="simple-screen simple-result" id="simpleResultView" aria-labelledby="resultTitle" hidden>
@@ -61,7 +61,7 @@
         <p class="result-context" id="resultContext">—</p>
       </header>
 
-      <div class="score-orbit" aria-label="分數">
+      <div class="score-orbit" role="status" aria-live="polite" aria-atomic="true" aria-label="分數">
         <strong id="resultScore">—</strong>
         <span>/ 100</span>
       </div>
@@ -72,21 +72,46 @@
       <p class="result-safety" id="resultSafety" hidden></p>
 
       <div class="result-actions">
+        <button class="secondary-button" id="openChartBtn" type="button">查看完整盤面</button>
         <button class="primary-button" id="resetBtn" type="button">再算一次</button>
-        <p class="rule-note">術法規則待校準，分數僅表示目前規則下的傾向。</p>
+        <p class="rule-note">同一時間與報數，盤面和分數固定不變。</p>
       </div>
+    </section>
+
+    <section class="simple-screen chart-screen" id="simpleChartView" aria-labelledby="chartTitle" hidden>
+      <div class="chart-toolbar">
+        <button class="back-button" id="backToResultBtn" type="button">← 返回結果</button>
+        <span>時家奇門・置閏・轉盤</span>
+      </div>
+
+      <header class="chart-header">
+        <p class="eyebrow">九宮總覽</p>
+        <h2 id="chartTitle">完整盤面</h2>
+        <p id="chartMetaPrimary">—</p>
+      </header>
+
+      <dl class="chart-meta-list" id="chartMetaList"></dl>
+      <p class="chart-lock" id="chartLock">—</p>
+
+      <div class="simple-chart-grid" id="simplePalaceGrid" aria-label="九宮完整盤面"></div>
+
+      <section class="palace-detail" id="palaceDetail" aria-live="polite" tabindex="-1"></section>
+
+      <p class="chart-caveat">採台北時間、子正換日、超接置閏九日門檻、天禽寄坤。若時間正落在交節同一分鐘，建議另盤核對。</p>
+      <button class="secondary-button chart-bottom-back" id="chartBackBottomBtn" type="button">返回結果</button>
     </section>
 
     <div class="engine-controls" hidden aria-hidden="true">
       <input id="inquiryMode" value="formal">
       <input id="selectionMode" value="single">
-      <select id="doorMode"><option value="lock" selected>九宮鎖單宮校準</option></select>
-      <select id="ziChange"><option value="false" selected>23:00 不換日</option></select>
+      <select id="doorMode"><option value="zhirun-zhuanpan" selected>置閏轉盤</option></select>
+      <select id="ziChange"><option value="false" selected>00:00 換日</option></select>
       <div id="autoNote"></div>
     </div>
   </main>
 
-  <script src="engine.js?v=5.4-simple-result-first-4" defer></script>
-  <script src="app.js?v=5.4-simple-result-first-4" defer></script>
+  <script src="engine.js?v=5.5-shijia-2" defer></script>
+  <script src="timeqimen-engine.js?v=5.5-shijia-2" defer></script>
+  <script src="app.js?v=5.5-shijia-2" defer></script>
 </body>
 </html>
