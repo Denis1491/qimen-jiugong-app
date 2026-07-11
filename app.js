@@ -561,6 +561,10 @@ function simpleStemValue(stems,meta=[]){
   if(!Array.isArray(stems)||!stems.length)return "—";
   return stems.map((stem,index)=>meta[index]?.role==="lodged"?`${stem}（寄）`:stem).join("、");
 }
+function compactStemValue(stems,meta=[]){
+  if(!Array.isArray(stems)||!stems.length)return "—";
+  return stems.map((stem,index)=>meta[index]?.role==="lodged"?`${stem}寄`:stem).join("・");
+}
 function simplePalaceTitle(p){return `${p.key}${CN_NUM[p.number]||p.number}宮`}
 function renderSimplePalaceDetail(p){
   const detail=document.getElementById("palaceDetail");
@@ -622,13 +626,19 @@ function renderSimpleChart(){
     const locked=p.number===lockedNumber;
     const selected=p.number===inspectedPalaceNum;
     const flags=(p.flags||[]).join("、");
-    const label=`查看${simplePalaceTitle(p)}，八神${simplePalaceValue(p.god)}，九星${simpleStarValue(p)}，八門${simplePalaceValue(p.door)}`;
+    const topText=simpleStemValue(p.top);
+    const bottomText=simpleStemValue(p.bottom,p.bottomMeta);
+    const label=`查看${simplePalaceTitle(p)}，八神${simplePalaceValue(p.god)}，九星${simpleStarValue(p)}，八門${simplePalaceValue(p.door)}，天盤干${topText}，地盤干${bottomText}`;
     return `<button type="button" class="chart-palace ${p.isCenter?"is-center":""} ${locked?"is-locked":""} ${selected?"is-inspected":""}" data-palace-number="${p.number}" aria-label="${escapeHTML(label)}" aria-pressed="${selected?"true":"false"}">
       ${locked?`<span class="chart-lock-badge">本次鎖定</span>`:""}
       <div class="chart-palace-head"><strong>${escapeHTML(`${p.key}${CN_NUM[p.number]||p.number}`)}</strong><span>${escapeHTML(PALACE_DIR[p.key]||"中央")}</span></div>
       <div class="chart-palace-row"><b>${escapeHTML(simplePalaceValue(p.god))}</b></div>
       <div class="chart-palace-row"><b>${escapeHTML(simpleStarValue(p))}</b></div>
       <div class="chart-palace-row"><b>${escapeHTML(simplePalaceValue(p.door))}</b></div>
+      <div class="chart-palace-stems">
+        <span><small>天</small><b title="天盤干 ${escapeHTML(topText)}">${escapeHTML(compactStemValue(p.top))}</b></span>
+        <span><small>地</small><b title="地盤干 ${escapeHTML(bottomText)}">${escapeHTML(compactStemValue(p.bottom,p.bottomMeta))}</b></span>
+      </div>
       <div class="chart-palace-flags">${escapeHTML(flags)}</div>
     </button>`;
   }).join("");
@@ -991,7 +1001,7 @@ function registerServiceWorker(){
     )).catch(()=>{});
   }
   if(!isLocal&&"serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.5-shijia-2").then(reg=>{
+    navigator.serviceWorker.register("sw.js?v=5.5-shijia-3").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});

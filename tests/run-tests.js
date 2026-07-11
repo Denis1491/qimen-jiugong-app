@@ -25,7 +25,7 @@ global.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () =
 const core = require(path.join(root, "app.js"));
 const timeQimen = require(path.join(root, "timeqimen-engine.js"));
 
-const assetVersion = "5.5-shijia-2";
+const assetVersion = "5.5-shijia-3";
 assert(html.includes(`style.css?v=${assetVersion}`), "index.html must load V5.5 CSS");
 assert(html.includes(`engine.js?v=${assetVersion}`), "index.html must load V5.5 metadata");
 assert(html.includes(`timeqimen-engine.js?v=${assetVersion}`), "index.html must load the Time-Qimen engine");
@@ -39,6 +39,8 @@ assert(html.includes('id="resultScore"') && html.includes('id="resultVerdict"'),
 assert(html.includes('id="resetBtn"'), "reset action is required");
 assert(html.includes('id="openChartBtn"') && html.includes('id="backToResultBtn"'), "full-chart navigation actions are required");
 assert(html.includes('id="simplePalaceGrid"') && html.includes('id="palaceDetail"'), "full-chart grid and palace detail are required");
+assert(html.includes('class="chart-stem-key"') && html.includes("甲 乙 丙 丁 戊 己 庚 辛 壬 癸"), "the full chart must include the ten heavenly stems legend");
+assert(html.includes("天＝天盤干・地＝地盤干"), "the full chart must explain the compact heaven and earth plate labels");
 assert(!/<main[^>]*aria-live=/i.test(html) && html.includes('class="score-orbit" role="status"'), "live announcements must stay scoped to result and palace detail");
 assert(html.includes("時家奇門・置閏・轉盤；分數只看鎖定宮。"), "visible method and scoring summary is required");
 assert(html.includes("超接置閏九日門檻") && html.includes("天禽寄坤"), "full chart must disclose the selected method variants");
@@ -50,6 +52,7 @@ assert(style.includes(".mobile-prototype"), "mobile prototype wrapper is require
 assert(style.includes("assets/paper-texture.webp"), "paper texture must be used by the UI");
 assert(style.includes(".score-orbit") && style.includes(".result-verdict"), "result-first visual hierarchy is required");
 assert(style.includes(".simple-chart-grid") && style.includes(".chart-palace") && style.includes(".palace-detail"), "mobile full-chart styles are required");
+assert(style.includes(".chart-stem-key") && style.includes(".chart-palace-stems"), "full-chart stem legend and palace stem styles are required");
 assert(style.includes(":focus-visible"), "visible keyboard focus styles are required");
 assert(/\.rule-note\s*\{[^}]*font-size:\s*12px/s.test(style), "rule disclaimer must remain legible at 12px or larger");
 assert(fs.statSync(path.join(root, "assets", "paper-texture.webp")).size > 0, "paper texture asset is missing");
@@ -57,7 +60,7 @@ assert(fs.statSync(path.join(root, "assets", "paper-texture.webp")).size > 0, "p
 assert(engine.includes('app: "5.5"') && engine.includes('chart: "shijia-zhirun-zhuanpan.v2"'), "engine metadata should identify V5.5 Time-Qimen");
 assert(timeQimenSource.includes('const VERSION = "shijia-zhirun-zhuanpan.v2"'), "Time-Qimen engine version is required");
 assert(engine.includes('window.QIMEN_CASE_STORAGE_KEY = "qimen-jiugong-cases-v5"'), "case storage key must remain v5 compatible");
-assert(sw.includes("qimen-jiugong-v5-5-shijia-2"), "service worker cache name should be V5.5 Time-Qimen release");
+assert(sw.includes("qimen-jiugong-v5-5-shijia-3"), "service worker cache name should be V5.5 Time-Qimen release");
 assert(sw.includes(`timeqimen-engine.js?v=${assetVersion}`), "service worker must cache the Time-Qimen engine");
 assert(sw.includes('key.startsWith("qimen-jiugong-") && key !== CACHE_NAME'), "service worker must only delete its own old caches");
 assert(sw.includes(`app.js?v=${assetVersion}`), "service worker must cache the V5.4 app asset");
@@ -67,6 +70,7 @@ assert(app.includes('keys.filter(key=>key.startsWith("qimen-jiugong-"))'), "loca
 assert(app.includes('new URL(worker.scriptURL).pathname===localWorkerPath'), "localhost must only unregister this app's service worker path");
 assert(app.includes("健康、法律與財務問題，請以專業判斷為準。"), "high-risk topics must always show a professional-advice reminder");
 assert(app.includes("function renderSimpleChart()") && app.includes("function inspectSimplePalace(number)"), "full-chart rendering and palace inspection are required");
+assert(app.includes('class="chart-palace-stems"') && app.includes("天盤干${topText}") && app.includes("地盤干${bottomText}"), "every palace cell must render and announce heaven and earth plate stems");
 assert(!app.includes("<span>神</span>") && !app.includes("<span>星</span>") && !app.includes("<span>門</span>"), "compact palace cells should show values without redundant category labels");
 assert(app.includes('selectedNum===5') && app.includes("報數 5 → 取"), "the full chart must explain the 5-to-2 lock mapping");
 assert(app.includes("history.pushState") && app.includes('addEventListener("popstate"'), "mobile browser back must return from chart to result");

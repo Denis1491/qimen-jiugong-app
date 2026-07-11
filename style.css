@@ -465,6 +465,39 @@ summary:focus-visible {
   text-align: center;
 }
 
+.chart-stem-key {
+  margin-top: 8px;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 3px 9px;
+  border: 1px solid rgba(104, 112, 86, .24);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, .44);
+}
+
+.chart-stem-key span {
+  color: var(--olive-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chart-stem-key strong {
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: .11em;
+  overflow-wrap: anywhere;
+}
+
+.chart-stem-key small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 .simple-chart-grid {
   width: 100%;
   margin-top: 12px;
@@ -476,7 +509,7 @@ summary:focus-visible {
 .chart-palace {
   position: relative;
   min-width: 0;
-  min-height: 124px;
+  min-height: 166px;
   padding: 8px 7px 7px;
   display: flex;
   flex-direction: column;
@@ -544,6 +577,37 @@ summary:focus-visible {
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chart-palace-stems {
+  min-width: 0;
+  padding-top: 4px;
+  display: grid;
+  gap: 2px;
+  border-top: 1px solid rgba(104, 112, 86, .2);
+}
+
+.chart-palace-stems > span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.chart-palace-stems small {
+  color: var(--olive-dark);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.chart-palace-stems b {
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .chart-palace-flags {
@@ -682,7 +746,7 @@ summary:focus-visible {
 @media (max-width: 370px) {
   .chart-screen { padding-inline: 12px; }
   .simple-chart-grid { gap: 5px; }
-  .chart-palace { min-height: 118px; padding-inline: 6px; }
+  .chart-palace { min-height: 158px; padding-inline: 6px; }
   .chart-palace.is-locked { padding-inline: 5px; }
   .chart-palace-head strong { font-size: 17px; }
   .chart-palace-row > b { font-size: 14px; }
