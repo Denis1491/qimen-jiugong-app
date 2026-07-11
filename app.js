@@ -72,7 +72,7 @@ const SCORE = {
   flag:{"空":-100}
 };
 const RULE_VERSION = window.QIMEN_RULE_VERSION || {
-  app:"5.1",
+  app:"5.4",
   lock:"lock-palace.v5.0",
   scoring:"scoring.v5.0",
   qtype:"qtype-rules.v5.0 待校準",
@@ -412,10 +412,10 @@ function symbolBox(label,type,sym){return `<div class="symbol-box"><span>${label
 function overallScore(){if(!chart)return 0; return Math.round(chart.palaces.filter(p=>!p.isCenter).reduce((s,p)=>s+scorePalaceRaw(p,chart.settings.qtype).score,0)/8)}
 
 // ===== 渲染 =====
-function renderAll(){applyUserMode(); updateInquiryHint(); updateInquiryControls(); renderQuestionDiagnosis(); renderRuleVersionV53(); renderNums(); renderMeta(); renderGrid(); renderLockedPanel(); renderResult(); renderReport(); renderCases(); renderPendingReviewBanner();}
+function renderAll(){renderNums(); if(chart&&selectedNum)renderSimpleResult();}
 function renderRuleVersionV53(){const el=document.getElementById("metricRules"); if(el)el.textContent=`App V${RULE_VERSION.app}｜術法規則 V5.0 待校準`}
 function renderRuleVersion(){const el=document.getElementById("metricRules"); if(el)el.textContent=`V${RULE_VERSION.app}｜用途生效・待校準`}
-function setNote(t){document.getElementById("autoNote").textContent=t}
+function setNote(t){const el=document.getElementById("autoNote"); if(el)el.textContent=t}
 function showView(view){
   currentView=view||"ask";
   document.querySelectorAll("[data-view-panel]").forEach(panel=>panel.classList.toggle("active",panel.dataset.viewPanel===currentView));
@@ -432,15 +432,20 @@ function chooseNumber(n){
     renderAll();
     return;
   }
-  selectedNum=n; renderAll();
+  selectedNum=n;
+  const error=document.getElementById("simpleFormError"); if(error)error.textContent="";
+  renderAll();
 }
 function renderNums(){
   const pad=document.getElementById("numPad");
+  if(!pad)return;
   if(!pad.dataset.ready){
     pad.innerHTML="";
     [1,2,3,4,5,6,7,8,9].forEach(n=>{
       const b=document.createElement("button");
       b.className="num-btn";
+      b.type="button";
+      b.setAttribute("aria-label",`選擇數字 ${n}`);
       b.onclick=()=>chooseNumber(n);
       pad.appendChild(b);
     });
@@ -459,11 +464,57 @@ function renderNums(){
     }else{
       b.textContent=String(n);
       b.classList.toggle("active",selectedNum===n);
+      b.setAttribute("aria-pressed",selectedNum===n?"true":"false");
       b.classList.remove("compare-a","compare-b");
       b.disabled=inquiryLocked&&selectedNum!==n;
       b.title=inquiryLocked?"正式問事已鎖定":"";
     }
   });
+}
+function simpleOutcomeForScore(score,denied=false){
+  const value=clamp(Math.round(Number(score)||0),0,100);
+  if(denied)return {verdict:"凶",message:"凶象集中，不宜強推。",tone:"bad",score:value};
+  if(value>=60)return {verdict:"偏吉",message:"目前條件可用，仍以小步驗證為宜。",tone:"good",score:value};
+  return {verdict:"偏凶",message:"目前條件偏弱，建議暫緩再觀察。",tone:"bad",score:value};
+}
+function simpleSafetyText(){
+  return "健康、法律與財務問題，請以專業判斷為準。";
+}
+function showSimpleScreen(name){
+  const ask=document.getElementById("simpleAskView"), result=document.getElementById("simpleResultView");
+  const showResult=name==="result";
+  if(ask){ask.hidden=showResult; ask.classList.toggle("active",!showResult); ask.scrollTop=0;}
+  if(result){result.hidden=!showResult; result.classList.toggle("active",showResult); result.scrollTop=0;}
+  document.body.dataset.simpleView=showResult?"result":"ask";
+}
+function renderSimpleResult(){
+  if(!chart||!selectedNum)return;
+  const palace=getPalaceByNum(selectedNum);
+  if(!palace)return;
+  const scored=scorePalace(palace,chart.settings.qtype);
+  const outcome=simpleOutcomeForScore(scored.score,scored.denied);
+  const question=document.getElementById("resultQuestion");
+  const context=document.getElementById("resultContext");
+  const score=document.getElementById("resultScore");
+  const verdict=document.getElementById("resultVerdict");
+  const message=document.getElementById("resultMessage");
+  const safety=document.getElementById("resultSafety");
+  const screen=document.getElementById("simpleResultView");
+  if(question){question.textContent=chart.question||"這件事目前適合推進嗎？"; question.title=chart.question||"";}
+  if(context)context.textContent=`${chart.settings.qtype}　｜　選 ${selectedNum}`;
+  if(score)score.textContent=String(outcome.score);
+  if(verdict)verdict.textContent=outcome.verdict;
+  if(message)message.textContent=outcome.message;
+  if(screen){screen.classList.toggle("result-good",outcome.tone==="good"); screen.classList.toggle("result-bad",outcome.tone==="bad");}
+  if(safety){const text=simpleSafetyText(chart.settings.qtype); safety.textContent=text; safety.hidden=!text;}
+}
+function resetSimpleInquiry(){
+  chart=null; selectedNum=null; inquiryLocked=false; activeCaseId=null; activeCompareSide="A"; compareSelections=blankCompareSelections();
+  const question=document.getElementById("questionText"); if(question)question.value="";
+  const error=document.getElementById("simpleFormError"); if(error)error.textContent="";
+  const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
+  renderAll(); showSimpleScreen("ask");
+  if(question)question.focus({preventScroll:true});
 }
 function renderMeta(){const box=document.getElementById("metaGrid"); if(!chart){box.innerHTML="";return} const m=chart.meta; const pairs=[["西元",m.solar],["農曆",m.lunar],["四柱",`${m.yearGZ}　${m.monthGZ}　${m.dayGZ}　${m.hourGZ}`],["起局",`${m.ju}｜陰盤`],["旬首",m.xunshou],["符頭",m.futou],["空亡",m.kongwang],["驛馬",m.yima],["值符",m.zhifu],["值使",m.zhishi],["局數公式",m.juFormula],["門法",document.getElementById("doorMode").selectedOptions[0].textContent]]; box.innerHTML=pairs.map(([a,b])=>`<div class="meta"><span>${a}</span><strong>${escapeHTML(b)}</strong></div>`).join(""); document.getElementById("chartBadge").textContent=`${m.ju}・${m.zhifu}・${m.zhishi}`; const ov=overallScore(); document.getElementById("metricOverall").textContent=`${ov}/100`;}
 function stemSpan(st,pal){const tags=[tagFor("stem",st)]; if(STEM_TOMB[st]===pal)tags.push(`<span class="small-tag tag-risk">墓</span>`); if(STEM_PUNISH[st]===pal)tags.push(`<span class="small-tag tag-risk">刑</span>`); const cls=classByScore("stem",st); return `<span class="${cls}">${st}</span>${tags.join("")}`}
@@ -793,8 +844,21 @@ async function importJsonFile(file){
   }catch(err){toast(err.message||"JSON 匯入失敗。")}
 }
 function registerServiceWorker(){
-  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
-    navigator.serviceWorker.register("sw.js?v=5.3-personal-calibration-1").then(reg=>{
+  const isLocal=["localhost","127.0.0.1"].includes(location.hostname);
+  if(isLocal&&"serviceWorker" in navigator){
+    const localWorkerPath=new URL("sw.js",location.href).pathname;
+    navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(
+      registrations.filter(registration=>{
+        const worker=registration.active||registration.waiting||registration.installing;
+        return worker?.scriptURL&&new URL(worker.scriptURL).pathname===localWorkerPath;
+      }).map(registration=>registration.unregister())
+    )).catch(()=>{});
+    if("caches" in window)caches.keys().then(keys=>Promise.all(
+      keys.filter(key=>key.startsWith("qimen-jiugong-")).map(key=>caches.delete(key))
+    )).catch(()=>{});
+  }
+  if(!isLocal&&"serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("sw.js?v=5.4-simple-result-first-4").then(reg=>{
       if(reg.waiting)reg.waiting.postMessage({type:"SKIP_WAITING"});
       reg.update().catch(()=>{});
     }).catch(()=>{});
@@ -2965,59 +3029,33 @@ function showOnboardingIfNeeded(){
   if(localStorage.getItem(ONBOARDING_KEY))return;
   renderOnboarding();
 }
-function setDateInput(p){document.getElementById("dt").value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`}
+function updateTimeSummary(value){
+  const summary=document.getElementById("timeSummary");
+  if(!summary)return;
+  const match=String(value||"").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  summary.textContent=match?`${match[2]}/${match[3]} ${match[4]}:${match[5]}`:"目前";
+}
+function setDateInput(p){
+  const value=`${p.y}-${pad(p.m)}-${pad(p.d)}T${pad(p.hh)}:${pad(p.mm)}`;
+  const input=document.getElementById("dt");
+  if(input)input.value=value;
+  updateTimeSummary(value);
+}
 function init(){
   const now=new Date(); setDateInput({y:now.getFullYear(),m:now.getMonth()+1,d:now.getDate(),hh:now.getHours(),mm:now.getMinutes()});
   renderAll();
-  showView("ask");
-  renderPendingReviewBanner();
-  showOnboardingIfNeeded();
-  document.querySelectorAll(".nav-btn").forEach(btn=>btn.addEventListener("click",()=>showView(btn.dataset.view)));
-  document.getElementById("quickExample").onclick=()=>{setSelectionMode("single"); compareSelections=blankCompareSelections(); activeCompareSide="A"; setDateInput({y:2026,m:7,d:8,hh:7,mm:44}); document.getElementById("qtype").value="今日運勢"; document.getElementById("questionText").value="今天這件事適不適合推進？"; selectedNum=7; buildChart(); renderAll(); showView("chart");};
-  document.getElementById("quickNow").onclick=()=>{const n=new Date(); setDateInput({y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate(),hh:n.getHours(),mm:n.getMinutes()});};
-  document.getElementById("questionText").addEventListener("input",()=>{renderQuestionDiagnosis();});
-  document.querySelectorAll(".mode-toggle").forEach(btn=>btn.addEventListener("click",()=>setUserMode(btn.dataset.userMode)));
-  document.getElementById("applyAppAdvice").onclick=applyAppAdvice;
-  document.getElementById("applyDiagnosisQtype").onclick=applyDiagnosisQtype;
-  document.getElementById("applyQuestionRewrite").onclick=applyQuestionRewrite;
-  document.getElementById("applyDecisionOptions").onclick=applyDecisionOptionDrafts;
-  document.getElementById("buildBtn").onclick=()=>{if(buildChart())showView("chart")};
-  document.getElementById("resetInquiryAsk").onclick=resetInquiry;
-  document.getElementById("resetInquiryChart").onclick=resetInquiry;
-  ["printBtnAsk","printBtnChart"].forEach(id=>{const btn=document.getElementById(id); if(btn)btn.onclick=()=>window.print();});
-  document.getElementById("copyReport").onclick=async()=>{const text=makeReport(); const ok=await copyText(text); if(ok){toast("報告已複製到剪貼簿。")}else{document.getElementById("reportBox").innerHTML=reportHTML(text); toast("瀏覽器限制複製，報告已放在下方可手動複製。")}};
-  document.getElementById("copyBrief").onclick=copyBriefAdvice;
-  document.getElementById("downloadTxt").onclick=()=>download("九宮奇門報告.txt",makeReport());
-  document.getElementById("exportJson").onclick=()=>download("qimen_jiugong_chart.json",JSON.stringify(chartPayload(),null,2),"application/json;charset=utf-8");
-  document.getElementById("importJsonBtn").onclick=()=>document.getElementById("importJsonInput").click();
-  document.getElementById("importJsonInput").onchange=e=>{importJsonFile(e.target.files[0]); e.target.value=""};
-  document.getElementById("saveCase").onclick=saveCurrentCase;
-  document.getElementById("updateCaseResult").onclick=updateCaseResult;
-  document.getElementById("copyCaseReviewChecklist").onclick=copyActiveCaseReviewChecklist;
-  document.getElementById("copyFilteredCaseReviewChecklist").onclick=copyFilteredCaseReviewChecklist;
-  document.getElementById("copyCaseCalibrationSummary").onclick=copyCaseCalibrationSummary;
-  document.getElementById("copyPersonalCalibrationReport").onclick=copyPersonalCalibrationReport;
-  document.getElementById("exportCases").onclick=()=>download("qimen_jiugong_cases.json",JSON.stringify({version:RULE_VERSION.app, exportedAt:new Date().toISOString(), cases:loadCases()},null,2),"application/json;charset=utf-8");
-  document.getElementById("exportCasesCsv").onclick=()=>download("qimen_jiugong_case_reviews.csv",casesToReviewCsv(loadCases()),"text/csv;charset=utf-8");
-  document.getElementById("exportFilteredCasesCsv").onclick=exportFilteredCasesCsv;
-  document.getElementById("clearCases").onclick=()=>{if(confirm("確定清空案例庫？")){saveCases([]); renderCases(); toast("案例庫已清空。")}};
-  document.getElementById("caseSearch").addEventListener("input",renderCases);
-  document.getElementById("caseReviewFilter").addEventListener("change",renderCases);
-  document.getElementById("caseStats").addEventListener("click",handleCaseStatsClick);
-  document.getElementById("caseList").addEventListener("click",handleCaseClick);
-  document.querySelectorAll(".report-mode").forEach(btn=>btn.addEventListener("click",()=>{
-    reportMode=btn.dataset.reportMode||"simple";
-    document.querySelectorAll(".report-mode").forEach(b=>b.classList.toggle("active",b===btn));
-    renderReport();
-  }));
-  document.getElementById("qtype").addEventListener("change",()=>{if(chart&&!inquiryLocked){chart.settings.qtype=document.getElementById("qtype").value; renderAll();}});
-  document.getElementById("inquiryMode").addEventListener("change",()=>{if(!inquiryLocked)renderAll();});
-  document.getElementById("selectionMode").addEventListener("change",()=>{if(inquiryLocked)return; if(!isCompareMode()){compareSelections=blankCompareSelections(); activeCompareSide="A"} renderAll();});
-  document.querySelectorAll(".compare-side").forEach(btn=>btn.addEventListener("click",()=>{if(inquiryLocked)return; activeCompareSide=btn.dataset.side||"A"; renderAll();}));
-  compareSides().map(side=>`option${side}Name`).forEach(id=>document.getElementById(id).addEventListener("input",()=>{if(chart&&isCompareChart()){chart.settings.compareOptions=compareOptions(); renderAll();}}));
-  ["doorMode","ziChange"].forEach(id=>document.getElementById(id).addEventListener("change",()=>{if(chart)buildChart()}));
+  showSimpleScreen("ask");
+  const error=document.getElementById("simpleFormError");
+  document.getElementById("dt").addEventListener("change",event=>updateTimeSummary(event.target.value));
+  document.getElementById("questionText").addEventListener("input",()=>{if(error)error.textContent="";});
+  document.getElementById("buildBtn").onclick=()=>{
+    const question=questionText();
+    if(!question){if(error)error.textContent="請先輸入一件想問的事情。"; document.getElementById("questionText").focus(); return;}
+    if(!selectedNum){if(error)error.textContent="請憑直覺選一個 1–9 的數字。"; document.querySelector("#numPad .num-btn")?.focus(); return;}
+    if(buildChart()){renderSimpleResult(); showSimpleScreen("result");}
+  };
+  document.getElementById("resetBtn").onclick=resetSimpleInquiry;
   registerServiceWorker();
-  runV5DevTests();
 }
 function testSamePalaceDifferentQtypeChangesScore(){
   if(!chart)return true;
@@ -3236,6 +3274,10 @@ function runV5DevTests(){
 }
 if(typeof module!=="undefined"){
   module.exports={
+    grade,
+    lockedPalaceNumber,
+    simpleOutcomeForScore,
+    scorePalaceV5,
     calibrationCompletenessScore,
     isFullyReviewedCase,
     buildCalibrationMaturity,
